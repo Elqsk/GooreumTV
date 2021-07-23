@@ -1,0 +1,2 @@
+rootProject.name = "GooreumTV"
+include ':app'

@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">구름티비</string>
+    <string name="title_home">홈</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+    <string name="title_user">마이 페이지</string>
+
+    <string name="title_login">로그인</string>
+</resources>
