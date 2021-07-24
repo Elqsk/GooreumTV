@@ -210,7 +210,6 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun initializePlayer() {
-
         Log.d(TAG, "PlayerActivity > initializePlayer() $playbackPosition")
         Log.d(TAG, " ")
 
@@ -261,6 +260,8 @@ class PlayerActivity : AppCompatActivity() {
         player!!.prepare(mediaSource, true, false)
 //        playWhenReady = true
 //        player!!.playWhenReady = playWhenReady
+
+        player!!.setThrowsWhenUsingWrongThread(false)
     }
 
     // 곧 애니메이팅하며 오른쪽에서부터 화면에 보일 댓글들을 준비한다.
@@ -273,6 +274,14 @@ class PlayerActivity : AppCompatActivity() {
             thread = Thread(Runnable() {
                 run() {
                     Log.d(TAG, "PlayerActivity > thread: Thread / 시작")
+                    Log.d(TAG, "PlayerActivity > thread: Thread / $thread")
+                    Log.d(TAG, "PlayerActivity > thread name:     ${thread!!.name}")
+                    Log.d(TAG, "PlayerActivity > thread priority: ${thread!!.priority}")
+                    Log.d(TAG, "PlayerActivity > thread state:    ${thread!!.state}")
+                    Log.d(TAG, "PlayerActivity > thread / player applicationLooper: ${player!!.applicationLooper}")
+                    Log.d(TAG, "PlayerActivity > thread / player playbackLooper:    ${player!!.playbackLooper}")
+                    Log.d(TAG, "PlayerActivity > thread / Looper.myLooper():      ${Looper.myLooper()}")
+                    Log.d(TAG, "PlayerActivity > thread / Looper.getMainLooper(): ${Looper.getMainLooper()}")
 
                     var currentPosition: Long = 0
 
@@ -287,8 +296,7 @@ class PlayerActivity : AppCompatActivity() {
 
                             currentPosition = player!!.currentPosition
 
-                            if (player!!.isPlaying && commentList!!.size != 0 &&
-                                animationStarted) {
+                            if (player!!.isPlaying && commentList!!.size != 0 && animationStarted) {
 
                                 for (i in 0 until commentList!!.size) {
                                     // 8초 동안 1080 만큼 이동하고(화면의 끝에서 끝으로 가고), 초당 135 만큼
