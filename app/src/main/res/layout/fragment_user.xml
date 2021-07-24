@@ -81,7 +81,7 @@
     </ScrollView>
 
     <Button
-        android:id="@+id/login_button"
+        android:id="@+id/go_to_login_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/title_login"

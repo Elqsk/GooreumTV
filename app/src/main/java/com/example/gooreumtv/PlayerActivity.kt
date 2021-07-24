@@ -196,7 +196,6 @@ class PlayerActivity : AppCompatActivity() {
     // 처음부터 플레이어를 재생하는 것이 아니고, 플레이어와 (댓글을 화면 밖에 미리 배치하는) 스레드, 핸들러,
     // (시작하자마자 작성된) 기존의 댓글들을 배치하고 애니메이션 적용 까지 마쳐야 (동시에) 시작할 수 있다.
     private fun ready() {
-
         Log.d(TAG, "PlayerActivity > ready() $playbackPosition")
         Log.d(TAG, " ")
 

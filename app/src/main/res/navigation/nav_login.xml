@@ -2,7 +2,7 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/nav_graph"
+    android:id="@+id/nav_login"
     app:startDestination="@id/LoginFragment">
 
     <fragment
@@ -17,9 +17,9 @@
     </fragment>
     <fragment
         android:id="@+id/LogoutFragment"
-        android:name="com.example.gooreumtv.ui.logout.LogoutFragment"
-        android:label="@string/logout_fragment_label"
-        tools:layout="@layout/fragment_logout">
+        android:name="com.example.gooreumtv.ui.register.RegisterFragment"
+        android:label="@string/register_fragment_label"
+        tools:layout="@layout/fragment_register">
 
         <action
             android:id="@+id/action_LogoutFragment_to_LoginFragment"

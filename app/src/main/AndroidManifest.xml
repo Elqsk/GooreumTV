@@ -12,50 +12,59 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GooreumTV">
         <activity
+            android:name=".LoginActivity"
+            android:label="@string/title_activity_login"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.GooreumTV.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.example.gooreumtv.MainActivity" />
+        </activity>
+        <activity
             android:name=".UploadVideoActivity"
-            android:label="@string/title_activity_upload_video"
-            android:theme="@style/Theme.GooreumTV.NoActionBar"
             android:exported="false"
-            android:parentActivityName="com.example.gooreumtv.MyVideoActivity">
+            android:label="@string/title_activity_upload_video"
+            android:parentActivityName=".MyVideoActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.example.gooreumtv.MyVideoActivity" />
         </activity>
         <activity
             android:name=".MyVideoActivity"
-            android:label="@string/title_activity_my_video"
-            android:theme="@style/Theme.GooreumTV.NoActionBar"
             android:exported="false"
-            android:parentActivityName="com.example.gooreumtv.MainActivity">
+            android:label="@string/title_activity_my_video"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.example.gooreumtv.MainActivity" />
         </activity>
         <activity
             android:name=".AccountSettingActivity"
-            android:label="@string/title_activity_account_setting"
-            android:theme="@style/Theme.GooreumTV.NoActionBar"
             android:exported="false"
-            android:parentActivityName="com.example.gooreumtv.MainActivity">
+            android:label="@string/title_activity_account_setting"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.example.gooreumtv.MainActivity" />
         </activity>
-        <activity android:name=".LoginActivity"
-            android:exported="false" />
-        <activity android:name=".PlayerActivity"
+        <activity
+            android:name=".PlayerActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
-            android:label="@string/player_activity_name"
             android:exported="false"
-            android:parentActivityName="com.example.gooreumtv.MainActivity">
+            android:label="@string/player_activity_name"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.example.gooreumtv.MainActivity" />
         </activity>
         <activity
             android:name=".MainActivity"
-            android:label="@string/app_name"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

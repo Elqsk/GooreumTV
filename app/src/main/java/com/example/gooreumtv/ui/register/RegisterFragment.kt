@@ -1,4 +1,4 @@
-package com.example.gooreumtv.ui.login
+package com.example.gooreumtv.ui.register
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -7,14 +7,14 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
 import com.example.gooreumtv.R
-import com.example.gooreumtv.databinding.FragmentLoginBinding
+import com.example.gooreumtv.databinding.FragmentRegisterBinding
 
 /**
- * A simple [Fragment] subclass as the default destination in the navigation.
+ * A simple [Fragment] subclass as the second destination in the navigation.
  */
-class LoginFragment : Fragment() {
+class RegisterFragment : Fragment() {
 
-    private var _binding: FragmentLoginBinding? = null
+    private var _binding: FragmentRegisterBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -25,7 +25,7 @@ class LoginFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
 
-        _binding = FragmentLoginBinding.inflate(inflater, container, false)
+        _binding = FragmentRegisterBinding.inflate(inflater, container, false)
         return binding.root
 
     }
@@ -33,8 +33,8 @@ class LoginFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.goToRegisterButton.setOnClickListener {
-            findNavController().navigate(R.id.action_LoginFragment_to_LogoutFragment)
+        binding.goToLoginButton.setOnClickListener {
+            findNavController().navigate(R.id.action_LogoutFragment_to_LoginFragment)
         }
     }
 
