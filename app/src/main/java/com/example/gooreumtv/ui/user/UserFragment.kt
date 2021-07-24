@@ -1,18 +1,31 @@
 package com.example.gooreumtv.ui.user
 
+import android.app.Activity
 import android.content.Intent
+import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityOptionsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.example.gooreumtv.AccountSettingActivity
-import com.example.gooreumtv.LoginActivity
-import com.example.gooreumtv.MyVideoActivity
+import com.bumptech.glide.Glide
+import com.example.gooreumtv.*
 import com.example.gooreumtv.databinding.FragmentUserBinding
+import com.example.gooreumtv.ui.register.RegisterFragment
+import com.google.common.reflect.TypeToken
+import com.google.gson.GsonBuilder
 
 class UserFragment : Fragment() {
 
@@ -27,37 +40,123 @@ class UserFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         userViewModel =
             ViewModelProvider(this).get(UserViewModel::class.java)
 
         _binding = FragmentUserBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        val goToLoginButton = binding.goToLoginButton
-        goToLoginButton.setOnClickListener {
-            val intent = Intent(activity, LoginActivity::class.java)
-            startActivity(intent)
-        }
-
-        val myVideoButton = binding.myVideoButton
-        myVideoButton.setOnClickListener {
-            val intent = Intent(activity, MyVideoActivity::class.java)
-            startActivity(intent)
-        }
-
-        val accountSettingButton = binding.accountSettingButton
-        accountSettingButton.setOnClickListener {
-            val intent = Intent(activity, AccountSettingActivity::class.java)
-            startActivity(intent)
-        }
+        setClickListeners()
+        checkLoginState()
 
 //        val textView: TextView = binding.textNotifications
 //        userViewModel.text.observe(viewLifecycleOwner, Observer {
 //            textView.text = it
 //        })
+
         return root
     }
+
+    private fun checkLoginState() {
+
+        val session = requireActivity().getSharedPreferences("session", AppCompatActivity.MODE_PRIVATE)
+        if (session != null) {
+
+            val userIndex = session.getInt("user", 0)
+
+            Log.d(MainActivity.TAG, "UserFragment > User index: $userIndex")
+            Log.d(MainActivity.TAG, " ")
+
+            // 로그인 되어 있음
+            if (userIndex > 0) {
+                binding.guestInterface.visibility = View.INVISIBLE
+
+                val usersDB = requireActivity().getSharedPreferences("users", AppCompatActivity.MODE_PRIVATE)
+                if (usersDB != null) {
+                    val value = usersDB.getString(userIndex.toString(), null)
+
+                    val token: TypeToken<User> = object : TypeToken<User>() {}
+                    val gson = GsonBuilder().create()
+
+                    val user: User = gson.fromJson(value, token.type)
+
+                    val imageUri = user.imageUri
+                    val name = user.name
+
+                    Glide.with(this)
+                        .load(imageUri)
+                        .circleCrop()
+                        .into(binding.imageView)
+                    binding.nameView.text = name
+                }
+                binding.membershipInterface.visibility = View.VISIBLE
+            }
+            // 로그인 상태 아님
+            else {
+                binding.membershipInterface.visibility = View.INVISIBLE
+                binding.guestInterface.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun setClickListeners() {
+        binding.goToLoginButton.setOnClickListener {
+            val intent = Intent(activity, LoginActivity::class.java)
+            getLoginContent.launch(intent)
+        }
+
+        binding.myVideoButton.setOnClickListener {
+            val intent = Intent(activity, MyVideoActivity::class.java)
+            startActivity(intent)
+        }
+
+        binding.accountSettingButton.setOnClickListener {
+            val intent = Intent(activity, AccountSettingActivity::class.java)
+            getAccountSettingContent.launch(intent)
+        }
+    }
+
+    private val getAccountSettingContent =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                result ->
+            if (result.data?.getBooleanExtra("login", true) == false) {
+                binding.membershipInterface.visibility = View.INVISIBLE
+                binding.guestInterface.visibility = View.VISIBLE
+            }
+        }
+
+    private val getLoginContent =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                result ->
+
+            if (result.resultCode == Activity.RESULT_OK) {
+                val userIndex = result.data?.getIntExtra("user", 0)
+
+                Log.d(MainActivity.TAG, "UserFragment > registerForActivityResult / userIndex: $userIndex")
+
+                val usersDB = requireActivity().getSharedPreferences("users", AppCompatActivity.MODE_PRIVATE)
+                if (usersDB != null && usersDB.all.isNotEmpty()) {
+                    val token: TypeToken<User> = object : TypeToken<User>() {}
+                    val gson = GsonBuilder().create()
+
+                    val value = usersDB.getString(userIndex.toString(), null)
+                    val user: User = gson.fromJson(value, token.type)
+                    Glide.with(this)
+                        .load(Uri.parse(user.imageUri.toString()))
+                        .circleCrop()
+                        .into(binding.imageView)
+                    binding.nameView.text = user.name
+
+                    Log.d(MainActivity.TAG, "UserFragment > registerForActivityResult / imageUri: ${user.imageUri}")
+                    Log.d(MainActivity.TAG, "                                           name:     ${user.name}")
+                    Log.d(MainActivity.TAG, " ")
+
+                    binding.membershipInterface.visibility = View.VISIBLE
+                    binding.guestInterface.visibility = View.INVISIBLE
+                }
+            }
+        }
 
     override fun onDestroyView() {
         super.onDestroyView()

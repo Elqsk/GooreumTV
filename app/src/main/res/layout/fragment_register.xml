@@ -7,29 +7,63 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
+    android:gravity="center_horizontal"
     android:background="#FFFFFF"
-    tools:context=".ui.login.LoginFragment">
+    tools:context=".ui.register.RegisterFragment">
+
+    <ImageView
+        android:id="@+id/profile_image_view"
+        android:background="@drawable/ic_add_photo_202020"
+        android:layout_width="100dp"
+        android:layout_height="100dp" />
 
     <EditText
         android:id="@+id/id_edit_text"
         android:hint="@string/title_id"
         android:layout_marginBottom="16dp"
+        android:inputType="textEmailAddress"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
     <EditText
         android:id="@+id/password_edit_text"
         android:hint="@string/title_password"
+        android:inputType="textPassword"
         android:layout_marginBottom="16dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
-    <Button
-        android:id="@+id/login_button"
-        android:text="@string/title_register"
-        android:layout_marginBottom="8dp"
+    <EditText
+        android:id="@+id/name_edit_text"
+        android:hint="@string/title_name"
+        android:inputType="text"
+        android:layout_marginBottom="16dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+            android:id="@+id/register_button_inactive"
+            android:text="@string/title_register"
+            android:layout_marginBottom="8dp"
+            android:textColor="#FFFFFF"
+            android:background="#CCCCCC"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/register_button"
+            android:text="@string/title_register"
+            android:visibility="invisible"
+            android:textColor="#FFFFFF"
+            android:background="@color/purple_500"
+            android:layout_marginBottom="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </FrameLayout>
 
     <TextView
         android:id="@+id/go_to_login_button"

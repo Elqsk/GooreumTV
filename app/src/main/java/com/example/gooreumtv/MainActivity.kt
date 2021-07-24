@@ -1,6 +1,8 @@
 package com.example.gooreumtv
 
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
@@ -19,6 +21,12 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setBottomNavigation()
+
+        loadUserData()
+    }
+
+    private fun setBottomNavigation() {
         val navView: BottomNavigationView = binding.navView
 
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
@@ -31,5 +39,14 @@ class MainActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+    }
+
+    private fun loadUserData() {
+        val session = getSharedPreferences("session", MODE_PRIVATE)
+        Log.d(TAG, "MainActivity > loadUserData / index: ${session.getInt("user", 0)}")
+    }
+
+    companion object {
+        const val TAG = "exo_2"
     }
 }

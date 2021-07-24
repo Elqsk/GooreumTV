@@ -2,7 +2,10 @@ package com.example.gooreumtv
 
 import android.app.Dialog
 import android.content.DialogInterface
+import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.snackbar.Snackbar
@@ -45,27 +48,32 @@ class AccountSettingActivity : AppCompatActivity() {
 //    }
 
     fun logout(view: View) {
-        LogoutConfirmDialogFragment().dialog?.show()
-    }
+        // Use the Builder class for convenient dialog construction
+        val builder = AlertDialog.Builder(this)
+        builder.setMessage("로그아웃합니다")
+            .setPositiveButton("확인",
+                DialogInterface.OnClickListener { dialog, id ->
+                    val session = getSharedPreferences("session", AppCompatActivity.MODE_PRIVATE)
+                    if (session != null) {
+                        val editor = session.edit()
+                        editor.remove("user")
+                        editor.apply()
 
-    inner class LogoutConfirmDialogFragment : DialogFragment() {
+                        Log.d(MainActivity.TAG, "LoginFragment > Logged out")
+                        Log.d(MainActivity.TAG, " ")
 
-        override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-            return activity?.let {
-                // Use the Builder class for convenient dialog construction
-                val builder = AlertDialog.Builder(it)
-                builder.setMessage("로그아웃합니다")
-                    .setPositiveButton("확인",
-                        DialogInterface.OnClickListener { dialog, id ->
-                            // FIRE ZE MISSILES!
-                        })
-                    .setNegativeButton("취소",
-                        DialogInterface.OnClickListener { dialog, id ->
-                            // User cancelled the dialog
-                        })
-                // Create the AlertDialog object and return it
-                builder.create()
-            } ?: throw IllegalStateException("Activity cannot be null")
-        }
+                        val intent = Intent()
+                        intent.putExtra("login", false)
+                        setResult(RESULT_OK, intent)
+                        finish()
+                    }
+                })
+            .setNegativeButton("취소",
+                DialogInterface.OnClickListener { dialog, id ->
+                    // User cancelled the dialog
+                })
+        // Create the AlertDialog object and return it
+        builder.create()
+            .show()
     }
 }
