@@ -41,7 +41,7 @@ class LoginFragment : Fragment() {
         return binding.root
     }
 
-    private var filledAllBlanks = false
+    private var metRequirements = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -53,7 +53,7 @@ class LoginFragment : Fragment() {
         }
 
         binding.loginButton.setOnClickListener {
-            if (filledAllBlanks) {
+            if (metRequirements) {
 
                 val session = requireActivity().getSharedPreferences("session", AppCompatActivity.MODE_PRIVATE)
                 if (session != null) {
@@ -124,12 +124,12 @@ class LoginFragment : Fragment() {
                 if (binding.idEditText.text.toString().trim().isNotEmpty() &&
                     binding.passwordEditText.text.toString().trim().isNotEmpty()) {
 
-                    filledAllBlanks = true
+                    metRequirements = true
 
                     binding.loginButton.visibility = View.VISIBLE
                     binding.loginButtonInactive.visibility = View.INVISIBLE
                 } else {
-                    filledAllBlanks = false
+                    metRequirements = false
 
                     binding.loginButton.visibility = View.INVISIBLE
                     binding.loginButtonInactive.visibility = View.VISIBLE
@@ -146,12 +146,12 @@ class LoginFragment : Fragment() {
                 if (binding.idEditText.text.toString().trim().isNotEmpty() &&
                     binding.passwordEditText.text.toString().trim().isNotEmpty()) {
 
-                    filledAllBlanks = true
+                    metRequirements = true
 
                     binding.loginButton.visibility = View.VISIBLE
                     binding.loginButtonInactive.visibility = View.INVISIBLE
                 } else {
-                    filledAllBlanks = false
+                    metRequirements = false
 
                     binding.loginButton.visibility = View.INVISIBLE
                     binding.loginButtonInactive.visibility = View.VISIBLE

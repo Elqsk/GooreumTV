@@ -1,6 +1,7 @@
 package com.example.gooreumtv
 
 import android.os.Bundle
+import android.text.TextWatcher
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
@@ -11,7 +12,6 @@ import com.example.gooreumtv.databinding.ActivityUploadVideoBinding
 
 class UploadVideoActivity : AppCompatActivity() {
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityUploadVideoBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,19 +23,19 @@ class UploadVideoActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-//        val navController = findNavController(R.id.nav_host_fragment_content_upload_video)
-//        appBarConfiguration = AppBarConfiguration(navController.graph)
-//        setupActionBarWithNavController(navController, appBarConfiguration)
-//
-//        binding.fab.setOnClickListener { view ->
-//            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                .setAction("Action", null).show()
-//        }
+        addTextChangedListener()
+        setVideoClickListener()
     }
 
-//    override fun onSupportNavigateUp(): Boolean {
-//        val navController = findNavController(R.id.nav_host_fragment_content_upload_video)
-//        return navController.navigateUp(appBarConfiguration)
-//                || super.onSupportNavigateUp()
-//    }
+    private fun setVideoClickListener() {
+
+    }
+
+    private var metRequirements = false
+
+    private fun addTextChangedListener() {
+//        binding.title.addTextChangedListener(object : TextWatcher {
+//
+//        })
+    }
 }
