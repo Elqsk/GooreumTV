@@ -22,6 +22,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.example.gooreumtv.*
+import com.example.gooreumtv.MainActivity.Companion.TAG
 import com.example.gooreumtv.databinding.FragmentUserBinding
 import com.example.gooreumtv.ui.register.RegisterFragment
 import com.google.common.reflect.TypeToken
@@ -46,6 +47,9 @@ class UserFragment : Fragment() {
 
         _binding = FragmentUserBinding.inflate(inflater, container, false)
         val root: View = binding.root
+
+        goToAccountSetting()
+        goToLogin()
 
         setClickListeners()
         checkLoginState()
@@ -101,30 +105,62 @@ class UserFragment : Fragment() {
     }
 
     private fun setClickListeners() {
-        binding.goToLoginButton.setOnClickListener {
-            val intent = Intent(activity, LoginActivity::class.java)
-            getLoginContent.launch(intent)
-        }
-
         binding.myVideoButton.setOnClickListener {
             val intent = Intent(activity, MyVideoActivity::class.java)
             startActivity(intent)
         }
+    }
 
-        binding.accountSettingButton.setOnClickListener {
-            val intent = Intent(activity, AccountSettingActivity::class.java)
-            getAccountSettingContent.launch(intent)
+    private fun goToLogin() {
+        binding.goToLoginButton.setOnClickListener {
+            val intent = Intent(activity, LoginActivity::class.java)
+
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                    result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    // 로그인 액티비티 종료
+                    val uid  = result.data?.getStringExtra("uid")
+                    val name = result.data?.getStringExtra("name")
+                    val imageString = result.data?.getStringExtra("image")
+
+                    Log.d(TAG, "UserFragment > [ login ] / uid:   $uid")
+                    Log.d(TAG, "                           image: $imageString")
+                    Log.d(TAG, "                           name:  $name")
+                    Log.d(TAG, " ")
+
+                    if (uid != null && imageString != null && name != null) {
+                        // ▽ 로그인 성공 시 각 뷰에 사용자 정보 설정
+                        Glide.with(this)
+                            .load(imageString)
+                            .circleCrop()
+                            .into(binding.imageView)
+
+                        binding.nameView.text = name
+
+                        binding.membershipInterface.visibility = View.VISIBLE
+                        binding.guestInterface.visibility = View.INVISIBLE
+                    }
+                }
+            }.launch(intent)
+            // 로그인 액티비티 시작
         }
     }
 
-    private val getAccountSettingContent =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-                result ->
-            if (result.data?.getBooleanExtra("login", true) == false) {
-                binding.membershipInterface.visibility = View.INVISIBLE
-                binding.guestInterface.visibility = View.VISIBLE
-            }
+    private fun goToAccountSetting() {
+        binding.accountSettingButton.setOnClickListener {
+            val intent = Intent(activity, AccountSettingActivity::class.java)
+
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                    result ->
+                // ▽ 로그아웃 시 게스트 모드로 UI 변경
+                if (result.data?.getBooleanExtra("login", true) == false) {
+                    binding.membershipInterface.visibility = View.INVISIBLE
+                    binding.guestInterface.visibility = View.VISIBLE
+                }
+            }.launch(intent)
+            // 계정 설정 액티비티 시작
         }
+    }
 
     private val getLoginContent =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {

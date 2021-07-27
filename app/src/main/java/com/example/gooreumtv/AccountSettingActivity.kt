@@ -51,6 +51,7 @@ class AccountSettingActivity : AppCompatActivity() {
                         intent.putExtra("login", false)
                         setResult(RESULT_OK, intent)
                         finish()
+                        // ▷ UserFragment UI 변경
                     }
                 })
             .setNegativeButton("취소",
