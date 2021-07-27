@@ -67,36 +67,41 @@ class UserFragment : Fragment() {
         val session = requireActivity().getSharedPreferences("session", AppCompatActivity.MODE_PRIVATE)
         if (session != null) {
 
-            val userIndex = session.getInt("user", 0)
+            val uid = session.getInt("user", 0)
 
-            Log.d(MainActivity.TAG, "UserFragment > User index: $userIndex")
-            Log.d(MainActivity.TAG, " ")
+            Log.d(TAG, "UserFragment > ▶ checkLoginState / 사용자 uid: $uid")
 
-            // 로그인 되어 있음
-            if (userIndex > 0) {
+            // 로그인 중임
+            if (uid > 0) {
                 binding.guestInterface.visibility = View.INVISIBLE
 
                 val usersDB = requireActivity().getSharedPreferences("users", AppCompatActivity.MODE_PRIVATE)
                 if (usersDB != null) {
-                    val value = usersDB.getString(userIndex.toString(), null)
+                    val value = usersDB.getString(uid.toString(), null)
 
                     val token: TypeToken<User> = object : TypeToken<User>() {}
                     val gson = GsonBuilder().create()
 
                     val user: User = gson.fromJson(value, token.type)
 
-                    val imageUri = user.imageUri
-                    val name = user.name
+                    val image = Uri.parse(user.image)
+                    val name  = user.name
+
+                    Log.d(TAG, "                                    value: $value")
+                    Log.d(TAG, "                                    user:  $user")
+                    Log.d(TAG, "                                    image: $image")
+                    Log.d(TAG, "                                    이름:   $name")
+                    Log.d(TAG, " ")
 
                     Glide.with(this)
-                        .load(imageUri)
+                        .load(image)
                         .circleCrop()
                         .into(binding.imageView)
                     binding.nameView.text = name
                 }
                 binding.membershipInterface.visibility = View.VISIBLE
             }
-            // 로그인 상태 아님
+            // 로그인 중 아님
             else {
                 binding.membershipInterface.visibility = View.INVISIBLE
                 binding.guestInterface.visibility = View.VISIBLE
@@ -115,34 +120,36 @@ class UserFragment : Fragment() {
         binding.goToLoginButton.setOnClickListener {
             val intent = Intent(activity, LoginActivity::class.java)
 
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-                    result ->
-                if (result.resultCode == Activity.RESULT_OK) {
-                    // 로그인 액티비티 종료
-                    val uid  = result.data?.getStringExtra("uid")
-                    val name = result.data?.getStringExtra("name")
-                    val imageString = result.data?.getStringExtra("image")
-
-                    Log.d(TAG, "UserFragment > [ login ] / uid:   $uid")
-                    Log.d(TAG, "                           image: $imageString")
-                    Log.d(TAG, "                           name:  $name")
-                    Log.d(TAG, " ")
-
-                    if (uid != null && imageString != null && name != null) {
-                        // ▽ 로그인 성공 시 각 뷰에 사용자 정보 설정
-                        Glide.with(this)
-                            .load(imageString)
-                            .circleCrop()
-                            .into(binding.imageView)
-
-                        binding.nameView.text = name
-
-                        binding.membershipInterface.visibility = View.VISIBLE
-                        binding.guestInterface.visibility = View.INVISIBLE
-                    }
-                }
-            }.launch(intent)
+            startLoginActivity.launch(intent)
             // 로그인 액티비티 시작
+        }
+    }
+    private val startLoginActivity =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // 로그인 액티비티 종료
+            val uid  = result.data?.getStringExtra("uid")
+            val name = result.data?.getStringExtra("name")
+            val imageString = result.data?.getStringExtra("image")
+
+            Log.d(TAG, "UserFragment > [ login ] / uid:   $uid")
+            Log.d(TAG, "                           image: $imageString")
+            Log.d(TAG, "                           name:  $name")
+            Log.d(TAG, " ")
+
+            if (uid != null && imageString != null && name != null) {
+                // ▽ 로그인 성공 시 각 뷰에 사용자 정보 설정
+                Glide.with(this)
+                    .load(imageString)
+                    .circleCrop()
+                    .into(binding.imageView)
+
+                binding.nameView.text = name
+
+                binding.membershipInterface.visibility = View.VISIBLE
+                binding.guestInterface.visibility = View.INVISIBLE
+            }
         }
     }
 
@@ -150,49 +157,19 @@ class UserFragment : Fragment() {
         binding.accountSettingButton.setOnClickListener {
             val intent = Intent(activity, AccountSettingActivity::class.java)
 
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-                    result ->
-                // ▽ 로그아웃 시 게스트 모드로 UI 변경
-                if (result.data?.getBooleanExtra("login", true) == false) {
-                    binding.membershipInterface.visibility = View.INVISIBLE
-                    binding.guestInterface.visibility = View.VISIBLE
-                }
-            }.launch(intent)
+            startAccountSettingActivity.launch(intent)
             // 계정 설정 액티비티 시작
         }
     }
-
-    private val getLoginContent =
+    private val startAccountSettingActivity =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-                result ->
-
-            if (result.resultCode == Activity.RESULT_OK) {
-                val userIndex = result.data?.getIntExtra("user", 0)
-
-                Log.d(MainActivity.TAG, "UserFragment > registerForActivityResult / userIndex: $userIndex")
-
-                val usersDB = requireActivity().getSharedPreferences("users", AppCompatActivity.MODE_PRIVATE)
-                if (usersDB != null && usersDB.all.isNotEmpty()) {
-                    val token: TypeToken<User> = object : TypeToken<User>() {}
-                    val gson = GsonBuilder().create()
-
-                    val value = usersDB.getString(userIndex.toString(), null)
-                    val user: User = gson.fromJson(value, token.type)
-                    Glide.with(this)
-                        .load(Uri.parse(user.imageUri.toString()))
-                        .circleCrop()
-                        .into(binding.imageView)
-                    binding.nameView.text = user.name
-
-                    Log.d(MainActivity.TAG, "UserFragment > registerForActivityResult / imageUri: ${user.imageUri}")
-                    Log.d(MainActivity.TAG, "                                           name:     ${user.name}")
-                    Log.d(MainActivity.TAG, " ")
-
-                    binding.membershipInterface.visibility = View.VISIBLE
-                    binding.guestInterface.visibility = View.INVISIBLE
-                }
-            }
+            result ->
+        // ▽ 로그아웃 시 게스트 모드로 UI 변경
+        if (result.data?.getBooleanExtra("login", true) == false) {
+            binding.membershipInterface.visibility = View.INVISIBLE
+            binding.guestInterface.visibility = View.VISIBLE
         }
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()

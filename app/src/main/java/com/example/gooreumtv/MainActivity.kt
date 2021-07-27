@@ -22,8 +22,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setBottomNavigation()
-
-        loadUserData()
     }
 
     private fun setBottomNavigation() {
@@ -39,11 +37,6 @@ class MainActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
-    }
-
-    private fun loadUserData() {
-        val session = getSharedPreferences("session", MODE_PRIVATE)
-        Log.d(TAG, "MainActivity > loadUserData / index: ${session.getInt("user", 0)}")
     }
 
     companion object {

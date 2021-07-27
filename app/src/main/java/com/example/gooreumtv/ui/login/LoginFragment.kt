@@ -60,6 +60,9 @@ class LoginFragment : Fragment() {
 
                     var key = 0
 
+                    var name: String? = null
+                    var image: String? = null
+
                     // 해당 사용자 정보가 존재하는지 검색
                     val usersDB = requireActivity().getSharedPreferences("users", AppCompatActivity.MODE_PRIVATE)
                     if (usersDB != null && usersDB.all.isNotEmpty()) {
@@ -73,13 +76,12 @@ class LoginFragment : Fragment() {
                             Log.d(MainActivity.TAG, "                value: $value")
 
                             val user: User = gson.fromJson(value, token.type)
+                            name = user.name
+                            image = user.image
 
                             Log.d(MainActivity.TAG, "LoginFragment > user: $user")
 
                             if (user.email == binding.idEditText.text.toString()) {
-
-                                Log.d(MainActivity.TAG, "LoginFragment > The email exists!")
-
                                 if (user.password == binding.passwordEditText.text.toString()) {
 
                                     Log.d(MainActivity.TAG, "LoginFragment > Account checked! key: $key")
@@ -94,16 +96,19 @@ class LoginFragment : Fragment() {
                             }
                         }
                     }
-                    // 로그인 성공
                     if (key > 0) {
+                        // 로그인 성공
                         val sessionEditor = session.edit()
                         sessionEditor.putInt("user", key)
                         sessionEditor.apply()
 
                         val intent = Intent()
-                        intent.putExtra("user", key)
+                            .putExtra("uid", key.toString())
+                            .putExtra("name", name)
+                            .putExtra("image", image.toString())
                         requireActivity().setResult(Activity.RESULT_OK, intent)
                         requireActivity().finish()
+                        // ▷ UserFragment UI 변경(사용자 정보 반영)
 
                         Log.d(MainActivity.TAG, "LoginFragment > Login succeed! - ${session.getInt("user", 0)}")
                     } else {

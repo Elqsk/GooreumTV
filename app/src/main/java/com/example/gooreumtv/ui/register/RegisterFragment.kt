@@ -105,11 +105,12 @@ class RegisterFragment : Fragment() {
                 Log.d(TAG, " ")
 
                 val intent = Intent()
-                intent.putExtra("user", key)
-                intent.putExtra("image", imageUri)
+                intent.putExtra("uid", key.toString())
+                intent.putExtra("image", imageUri.toString())
                 intent.putExtra("name", name)
                 requireActivity().setResult(Activity.RESULT_OK, intent)
                 requireActivity().finish()
+                // ▷ UserFragment UI 변경(사용자 정보 반영)
             }
         }
     }
