@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "592291849943",
+    "project_id": "gooreumtv",
+    "storage_bucket": "gooreumtv.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:592291849943:android:ffc070fb177b3941507292",
+        "android_client_info": {
+          "package_name": "com.example.gooreumtv"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "592291849943-a1to8t42tfg9od4ig9nchuv9kprt1o2t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxp4szdnrG7XFc4auQkJCos-9IcbIQaHw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "592291849943-a1to8t42tfg9od4ig9nchuv9kprt1o2t.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
