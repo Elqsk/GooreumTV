@@ -12,12 +12,14 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.example.gooreumtv.MainActivity.Companion.TAG
 import com.example.gooreumtv.PlayerActivity
 import com.example.gooreumtv.R
+import com.example.gooreumtv.Toolbox
 import com.example.gooreumtv.User
 import com.example.gooreumtv.databinding.FragmentRegisterBinding
 import com.google.common.reflect.TypeToken
@@ -53,13 +55,7 @@ class RegisterFragment : Fragment() {
         binding.goToLoginButton.setOnClickListener {
             findNavController().navigate(R.id.action_LogoutFragment_to_LoginFragment)
         }
-
-        binding.profileImageView.setOnClickListener {
-            // https://youngest-programming.tistory.com/517
-            val intent = Intent(Intent.ACTION_GET_CONTENT)
-                .setType("image/*")
-            startActivityForResult(intent, gallery)
-        }
+        addImage()
 
         addTextChangedListener()
         binding.registerButton.setOnClickListener {
@@ -105,9 +101,9 @@ class RegisterFragment : Fragment() {
                 Log.d(TAG, " ")
 
                 val intent = Intent()
-                intent.putExtra("uid", key.toString())
-                intent.putExtra("image", imageUri.toString())
-                intent.putExtra("name", name)
+                    .putExtra("uid", key.toString())
+                    .putExtra("image", imageUri.toString())
+                    .putExtra("name", name)
                 requireActivity().setResult(Activity.RESULT_OK, intent)
                 requireActivity().finish()
                 // ▷ UserFragment UI 변경(사용자 정보 반영)
@@ -115,8 +111,40 @@ class RegisterFragment : Fragment() {
         }
     }
 
+    private fun addImage() {
+        binding.profileImageView.setOnClickListener {
+            val intent = Intent(Intent.ACTION_GET_CONTENT).setType("image/*")
+
+            getImage.launch(intent) // 이미지 로드
+        }
+    }
+    private val getImage = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            result ->
+        // 이미지 로드 성공
+        if (result.resultCode == Activity.RESULT_OK) {
+
+            imageUri = result.data!!.data
+
+            if (imageUri != null) {
+                Log.d(TAG, "RegisterFragment > [ addImage ] / uri: $imageUri")
+
+                // 뷰에 삽입
+                Glide.with(this)
+                    .load(imageUri)
+                    .circleCrop()
+                    .into(binding.profileImageView)
+
+                // 서버에 이미지를 저장하기 위해 문자열로 변환
+                val bitmap = Toolbox.convertImageUriToBitmap(requireActivity(), imageUri!!)
+                imageString = Toolbox.convertBitmapToString(bitmap)
+            }
+            Log.d(TAG, " ")
+        }
+    }
+
     private val gallery = 1
     private var imageUri: Uri? = null
+    private var imageString: String? = null
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)

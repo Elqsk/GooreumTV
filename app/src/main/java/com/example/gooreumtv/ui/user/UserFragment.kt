@@ -48,11 +48,11 @@ class UserFragment : Fragment() {
         _binding = FragmentUserBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
+        checkLoginState()
+
         goToAccountSetting()
         goToLogin()
-
-        setClickListeners()
-        checkLoginState()
+        goToMyVideo()
 
 //        val textView: TextView = binding.textNotifications
 //        userViewModel.text.observe(viewLifecycleOwner, Observer {
@@ -109,7 +109,7 @@ class UserFragment : Fragment() {
         }
     }
 
-    private fun setClickListeners() {
+    private fun goToMyVideo() {
         binding.myVideoButton.setOnClickListener {
             val intent = Intent(activity, MyVideoActivity::class.java)
             startActivity(intent)
