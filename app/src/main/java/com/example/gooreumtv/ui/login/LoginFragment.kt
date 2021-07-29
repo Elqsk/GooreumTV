@@ -2,6 +2,7 @@ package com.example.gooreumtv.ui.login
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -10,16 +11,11 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.findNavController
-import com.example.gooreumtv.MainActivity
-import com.example.gooreumtv.R
-import com.example.gooreumtv.User
+import com.example.gooreumtv.*
+import com.example.gooreumtv.MainActivity.Companion.TAG
 import com.example.gooreumtv.databinding.FragmentLoginBinding
-import com.example.gooreumtv.ui.register.RegisterFragment
-import com.google.common.reflect.TypeToken
-import com.google.gson.GsonBuilder
+import com.google.firebase.firestore.ktx.toObject
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -41,8 +37,6 @@ class LoginFragment : Fragment() {
         return binding.root
     }
 
-    private var metRequirements = false
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -51,71 +45,115 @@ class LoginFragment : Fragment() {
         binding.goToRegisterButton.setOnClickListener {
             findNavController().navigate(R.id.action_LoginFragment_to_LogoutFragment)
         }
+        login()
+    }
 
+
+
+
+
+
+
+
+
+
+    private fun login() {
         binding.loginButton.setOnClickListener {
-            if (metRequirements) {
+            showProgressBar(true)
+            Toolbox.hideKeyboard(requireActivity(), binding.loginButton)
 
-                val session = requireActivity().getSharedPreferences("session", AppCompatActivity.MODE_PRIVATE)
-                if (session != null) {
+            val email    = binding.idEditText.text.toString()
+            val password = binding.passwordEditText.text.toString()
 
-                    var key = 0
+            MyFirebase.findUserWithEmail(email)
+                .addOnSuccessListener { documents ->
+                    for (document in documents) {
+                        Log.d(TAG, "LoginFragment > [ login ] / 이메일 있음..")
 
-                    var name: String? = null
-                    var image: String? = null
+                        val uid  = document.id
+                        val user = document.toObject<User>()
+                        val name = user.name
+                        val pass = user.password
+                        Log.d(TAG, "                            uid:   $uid")
+                        Log.d(TAG, "                            name:  $name")
+                        Log.d(TAG, "                            image: ${user.image}")
 
-                    // 해당 사용자 정보가 존재하는지 검색
-                    val usersDB = requireActivity().getSharedPreferences("users", AppCompatActivity.MODE_PRIVATE)
-                    if (usersDB != null && usersDB.all.isNotEmpty()) {
-                        for (i in 1..usersDB.all.size) {
-                            val token: TypeToken<User> = object : TypeToken<User>() {}
-                            val gson = GsonBuilder().create()
+                        // 비밀번호 까지 일치하는지 확인
+                        if (password == pass) {
+                            Log.d(TAG, "                            비밀번호 일치함..")
 
-                            val value = usersDB.getString(i.toString(), null)
+                            // 프로필 사진 다운로드
+                            MyFirebase.downloadUserImage(user.image)
+                                ?.addOnSuccessListener {
+                                    Log.d(TAG, "                            프로필 사진 다운로드 성공..")
 
-                            Log.d(MainActivity.TAG, "LoginFragment > size:  ${usersDB.all.size}")
-                            Log.d(MainActivity.TAG, "                value: $value")
+                                    // Firebase 로그인
+                                    MyFirebase.signIn(email, password).addOnCompleteListener { task ->
+                                        if (task.isSuccessful) {
+                                            Log.d(TAG, "                            로그인 성공! ")
 
-                            val user: User = gson.fromJson(value, token.type)
-                            name = user.name
-                            image = user.image
+                                            // 로컬에 로그인 상태 저장
+                                            CurrentUser.signIn(requireActivity(), uid)
 
-                            Log.d(MainActivity.TAG, "LoginFragment > user: $user")
+                                            Log.d(TAG, "                            bytes: $it")
+                                            Log.d(TAG, "                            size:  ${it.size}")
+                                            Log.d(TAG, " ")
 
-                            if (user.email == binding.idEditText.text.toString()) {
-                                if (user.password == binding.passwordEditText.text.toString()) {
-
-                                    Log.d(MainActivity.TAG, "LoginFragment > Account checked! key: $key")
-
-                                    key = i
-                                    break
-                                } else {
-                                    Log.d(MainActivity.TAG, "LoginFragment > Password not correct..")
+                                            updateUserFragment(uid, it, name)
+                                        } else {
+                                            showErrorMessage("Firebase 로그인 실패 ${task.exception}", "로그인 실패")
+                                        }
+                                    }
+                                }?.addOnFailureListener { e ->
+                                    showErrorMessage("이미지 다운로드 실패 $e", "로그인 실패")
                                 }
-                            } else {
-                                Log.d(MainActivity.TAG, "LoginFragment > The email doesn't exists..${user.email} =? ${binding.idEditText.text}")
-                            }
+                        } else {
+                            showErrorMessage("비밀번호 불일치", "계정을 찾을 수 없습니다")
                         }
                     }
-                    if (key > 0) {
-                        // 로그인 성공
-                        val sessionEditor = session.edit()
-                        sessionEditor.putInt("user", key)
-                        sessionEditor.apply()
-
-                        val intent = Intent()
-                            .putExtra("uid", key.toString())
-                            .putExtra("name", name)
-                            .putExtra("image", image.toString())
-                        requireActivity().setResult(Activity.RESULT_OK, intent)
-                        requireActivity().finish()
-                        // ▷ UserFragment UI 변경(사용자 정보 반영)
-
-                        Log.d(MainActivity.TAG, "LoginFragment > Login succeed! - ${session.getInt("user", 0)}")
-                    } else {
-                        Toast.makeText(activity, "로그인 실패", Toast.LENGTH_LONG).show()
-                    }
+                }.addOnFailureListener { exception ->
+                    showErrorMessage("이메일 없음 $exception", "계정을 찾을 수 없습니다")
                 }
-            }
+        }
+    }
+
+    private fun updateUserFragment(uid: String, image: ByteArray, name: String?) {
+        val intent = Intent()
+            .putExtra("uid",   uid)
+            .putExtra("image", image)
+            .putExtra("name",  name)
+        requireActivity().setResult(Activity.RESULT_OK, intent)
+        requireActivity().finish()
+
+        Log.d(TAG, "                            updateUserFragment() / finish()")
+    }
+
+
+
+
+
+
+
+
+
+
+    private fun showErrorMessage(log: String?, toast: String?) {
+        if (log != null) {
+            Log.e(TAG, "                            $log")
+        }
+        if (toast != null) {
+            Toolbox.makeToast(requireActivity(), toast)
+        }
+        showProgressBar(false)
+    }
+
+    private fun showProgressBar(visible: Boolean) {
+        if (visible) {
+            binding.ui.visibility = View.INVISIBLE
+            binding.progressBar.visibility = View.VISIBLE
+        } else {
+            binding.ui.visibility = View.VISIBLE
+            binding.progressBar.visibility = View.INVISIBLE
         }
     }
 
@@ -127,15 +165,11 @@ class LoginFragment : Fragment() {
 
             override fun afterTextChanged(p0: Editable?) {
                 if (binding.idEditText.text.toString().trim().isNotEmpty() &&
-                    binding.passwordEditText.text.toString().trim().isNotEmpty()) {
-
-                    metRequirements = true
-
+                    binding.passwordEditText.text.toString().trim().isNotEmpty()
+                ) {
                     binding.loginButton.visibility = View.VISIBLE
                     binding.loginButtonInactive.visibility = View.INVISIBLE
                 } else {
-                    metRequirements = false
-
                     binding.loginButton.visibility = View.INVISIBLE
                     binding.loginButtonInactive.visibility = View.VISIBLE
                 }
@@ -149,15 +183,11 @@ class LoginFragment : Fragment() {
 
             override fun afterTextChanged(p0: Editable?) {
                 if (binding.idEditText.text.toString().trim().isNotEmpty() &&
-                    binding.passwordEditText.text.toString().trim().isNotEmpty()) {
-
-                    metRequirements = true
-
+                    binding.passwordEditText.text.toString().trim().isNotEmpty()
+                ) {
                     binding.loginButton.visibility = View.VISIBLE
                     binding.loginButtonInactive.visibility = View.INVISIBLE
                 } else {
-                    metRequirements = false
-
                     binding.loginButton.visibility = View.INVISIBLE
                     binding.loginButtonInactive.visibility = View.VISIBLE
                 }

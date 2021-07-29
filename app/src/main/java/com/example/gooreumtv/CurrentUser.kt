@@ -13,7 +13,7 @@ class CurrentUser {
         private fun get(context: Context): SharedPreferences? {
             return context.getSharedPreferences(PREFS_NAME, AppCompatActivity.MODE_PRIVATE)
         }
-        fun login(context: Context, uid: String) {
+        fun signIn(context: Context, uid: String) {
             if (get(context) != null) {
                 val editor = get(context)!!.edit()
                 editor.putString(PREFS_KEY_UID, uid)
@@ -31,7 +31,7 @@ class CurrentUser {
                 null
             }
         }
-        fun logout(context: Context) {
+        fun signOut(context: Context) {
             if (get(context) != null) {
                 val editor = get(context)!!.edit()
                 editor.remove(PREFS_KEY_UID)

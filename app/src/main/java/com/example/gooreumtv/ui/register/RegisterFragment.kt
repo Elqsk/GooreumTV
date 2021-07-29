@@ -1,8 +1,10 @@
 package com.example.gooreumtv.ui.register
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
@@ -13,17 +15,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
+import com.example.gooreumtv.*
 import com.example.gooreumtv.MainActivity.Companion.TAG
-import com.example.gooreumtv.PlayerActivity
-import com.example.gooreumtv.R
-import com.example.gooreumtv.Toolbox
-import com.example.gooreumtv.User
 import com.example.gooreumtv.databinding.FragmentRegisterBinding
-import com.google.common.reflect.TypeToken
-import com.google.gson.GsonBuilder
 
 /**
  * A simple [Fragment] subclass as the second destination in the navigation.
@@ -36,14 +33,10 @@ class RegisterFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
-
-    // 사용자 DB의 사이즈가 곧 마지막 인덱스를 의미하고, 여기서 1을 더해 새로 가입한 사용자의 인덱스로 사용한다.
-    private var lastIndex = 0
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         _binding = FragmentRegisterBinding.inflate(inflater, container, false)
 
         return binding.root
@@ -52,79 +45,69 @@ class RegisterFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        addTextChangedListener()
+
         binding.goToLoginButton.setOnClickListener {
             findNavController().navigate(R.id.action_LogoutFragment_to_LoginFragment)
         }
         addImage()
-
-        addTextChangedListener()
-        binding.registerButton.setOnClickListener {
-            if (filledAllBlanks) {
-
-                val email = binding.idEditText.text.toString()
-                val password = binding.passwordEditText.text.toString()
-                val name = binding.nameEditText.text.toString()
-
-                Log.d(TAG, "RegisterFragment > Register Button Clicked / email:    $email")
-                Log.d(TAG, "                                             password: $password")
-                Log.d(TAG, "                                             name:     $name")
-                Log.d(TAG, "                                             imageUri: ${imageUri.toString()}")
-
-                val user = User(email, password, name, imageUri.toString())
-
-                val token: TypeToken<User> = object : TypeToken<User>() {}
-                val gson = GsonBuilder().create()
-
-                val key = lastIndex + 1
-                val value = gson.toJson(user, token.type)
-
-                Log.d(TAG, "                                             key: $key")
-                Log.d(TAG, "                                             value: $value")
-
-                val usersDB = requireActivity().getSharedPreferences("users", AppCompatActivity.MODE_PRIVATE)
-                if (usersDB != null) {
-                    val usersDBEditor = usersDB.edit()
-                    usersDBEditor.putString(key.toString(), value)
-                    usersDBEditor.apply()
-
-                    Log.d(TAG, "                                             Successfully registered! ${usersDB.getString(key.toString(), null)}")
-                }
-
-                val session = requireActivity().getSharedPreferences("session", AppCompatActivity.MODE_PRIVATE)
-                if (session != null) {
-                    val sessionEditor = session.edit()
-                    sessionEditor.putInt("user", key)
-                    sessionEditor.apply()
-
-                    Log.d(TAG, "                                             The activity will be finished..${session.getInt("user", 0)}")
-                }
-                Log.d(TAG, " ")
-
-                val intent = Intent()
-                    .putExtra("uid", key.toString())
-                    .putExtra("image", imageUri.toString())
-                    .putExtra("name", name)
-                requireActivity().setResult(Activity.RESULT_OK, intent)
-                requireActivity().finish()
-                // ▷ UserFragment UI 변경(사용자 정보 반영)
-            }
-        }
+        signUp()
     }
+
+    private var imageUri: Uri? = null
 
     private fun addImage() {
         binding.profileImageView.setOnClickListener {
-            val intent = Intent(Intent.ACTION_GET_CONTENT).setType("image/*")
-
-            getImage.launch(intent) // 이미지 로드
+            // 권한이 모두 수락되어야 이미지를 가져올 수 있다
+            checkPermissions()
         }
     }
-    private val getImage = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+    // 요청할 권한
+    private val permissions = arrayOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
+    private fun checkPermissions() {
+        Log.d(TAG, "RegisterFragment > checkPermissions / READ:  ${ContextCompat.checkSelfPermission(requireActivity(), permissions[0])}")
+        Log.d(TAG, "                                      WRITE: ${ContextCompat.checkSelfPermission(requireActivity(), permissions[1])}")
+
+        // 권한이 모두 수락되었는지 체크
+        if (ContextCompat.checkSelfPermission(requireActivity(), permissions[0]) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(requireActivity(), permissions[1]) == PackageManager.PERMISSION_GRANTED
+        ) {
+            // 이미지 로드
+            val intent = Intent(Intent.ACTION_GET_CONTENT).setType("image/*")
+            getImage.launch(intent)
+        } else {
+            // 하나라도 수락되지 않은 게 있으면 하나씩 수락 요청
+            for (permission in permissions) {
+                if (ContextCompat.checkSelfPermission(requireActivity(), permission) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissionLauncher.launch(permission)
+                }
+            }
+        }
+    }
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+                isGranted: Boolean ->
+            Log.d(TAG, "RegisterFragment > checkPermissions / register / READ:  ${ContextCompat.checkSelfPermission(requireActivity(), permissions[0])}")
+            Log.d(TAG, "                                                 WRITE: ${ContextCompat.checkSelfPermission(requireActivity(), permissions[1])}")
+
+            if (isGranted) {
+                // 권한이 수락되면 다시 권한이 모두 수락되었는지 체크
+                checkPermissions()
+            } else {
+                // 아니면 토스트
+                Toolbox.makeToast(requireActivity(), "계속하려면 권한을 허용해 주세요")
+            }
+        }
+    private val getImage =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             result ->
-        // 이미지 로드 성공
         if (result.resultCode == Activity.RESULT_OK) {
 
             imageUri = result.data!!.data
-
+            // 이미지 로드 성공
             if (imageUri != null) {
                 Log.d(TAG, "RegisterFragment > [ addImage ] / uri: $imageUri")
 
@@ -133,40 +116,154 @@ class RegisterFragment : Fragment() {
                     .load(imageUri)
                     .circleCrop()
                     .into(binding.profileImageView)
-
-                // 서버에 이미지를 저장하기 위해 문자열로 변환
-                val bitmap = Toolbox.convertImageUriToBitmap(requireActivity(), imageUri!!)
-                imageString = Toolbox.convertBitmapToString(bitmap)
             }
             Log.d(TAG, " ")
         }
     }
 
-    private val gallery = 1
-    private var imageUri: Uri? = null
-    private var imageString: String? = null
+    private fun signUp() {
+        binding.registerButton.setOnClickListener {
+            showProgressBar(true)
+            Toolbox.hideKeyboard(requireActivity(), binding.registerButton)
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
+            val email    = binding.idEditText.text.toString()
+            val password = binding.passwordEditText.text.toString()
+            val name     = binding.nameEditText.text.toString()
 
-        if (resultCode == Activity.RESULT_OK) {
-            if (requestCode == gallery) {
-                if (data != null) {
-                    imageUri = data.data
+            Log.d(TAG, "RegisterFragment > [ Register ] / email:    $email")
+            Log.d(TAG, "                                  password: $password")
+            Log.d(TAG, "                                  name:     $name")
+            Log.d(TAG, "                                  imageUri: ${imageUri.toString()}")
 
-                    Log.d(TAG, "RegisterFragment > onActivityResult() / uri: $imageUri")
-                    Log.d(TAG, " ")
+            // 중복(사용할 수 있는 계정인지) 검사
+            MyFirebase.findUserWithEmail(email)
+                .addOnSuccessListener { document ->
+                    if (document.isEmpty) {
+                        Log.d(TAG, "                                  사용할 수 있는 계정..")
 
-                    Glide.with(this)
-                        .load(imageUri)
-                        .circleCrop()
-                        .into(binding.profileImageView)
+                        // Storage를 이용하려면 해당 서비스의 로그인 & 가입과 별개로 Firebase 계정 인증을 해야
+                        // 한다.
+                        MyFirebase.authenticate(email, password).addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                Log.d(TAG, "                                  Firbase 인증 성공..")
+
+                                // 이미지는 너무 커서 Storage에 따로 저장하고, 사용자 정보에는 파일 경로를 저장한다.
+                                // 'images/' 폴더 안에 저장한다는 뜻인데, 그냥 파일명만 쓰면 폴더 없이 파일만 저장된다.
+                                // 이미지를 선택하지 않은 경우에는 기본 이미지로 대체한다.
+                                val dir   = "images/" +
+                                        if (imageUri == null)
+                                            "user.png"
+                                        else
+                                            Toolbox.createFilename(Toolbox.JPEG)
+                                val bitmap  = Toolbox.imageUriToBitmap(requireActivity(), imageUri)
+                                val resized = Toolbox.resizeBitmap(bitmap!!, 500, 500)
+                                val bytes   = Toolbox.bitmapToByteArray(resized)
+                                if (bytes != null) {
+                                    // 이미지 업로드
+                                    MyFirebase.uploadUserImage(bytes, dir)
+                                        .addOnSuccessListener {
+                                            Log.d(TAG, "                                  이미지 업로드 성공..")
+
+                                            // 서버(Firestore)에 사용자 정보 저장
+                                            addUser(email, password, name, dir)
+
+                                        }.addOnFailureListener { e ->
+                                            showErrorMessage("이미지 업로드 실패 $e", "가입 실패")
+                                        }
+                                } else {
+                                    // 기본 이미지가 들어가는 경우, 이미지 업로드 과정 없이 바로 서버(Firestore)에
+                                    // 사용자 정보 저장
+                                    addUser(email, password, name, dir)
+                                }
+                            } else {
+                                showErrorMessage("Firebase 인증 실패 ${task.exception}", "가입 실패")
+                            }
+                        }
+                    } else {
+                        showErrorMessage("이메일 중복", "사용할 수 없는 계정입니다")
+                    }
+                }.addOnFailureListener { e ->
+                    showErrorMessage("중복 검사 실패 $e", "가입 실패")
                 }
-            }
         }
     }
 
-    private var filledAllBlanks = false
+    private fun addUser(email: String, password: String, name: String, image: String) {
+        val user = hashMapOf(
+            "email"    to email,
+            "password" to password,
+            "name"     to name,
+            "image"    to image
+        )
+        MyFirebase.signUp(user)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "                                  사용자 추가 성공..")
+
+                // Firbase 로그인
+                MyFirebase.signIn(email, password)
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            Log.d(TAG, "                                  회원 가입 성공!")
+
+                            val uid = documentReference.id
+                            // 로컬에 로그인 상태 저장
+                            CurrentUser.signIn(requireActivity(), uid)
+
+                            Log.d(TAG, "RegisterFragment > [ Register ] / uid from server: ${documentReference.id}")
+                            Log.d(TAG, "                                  uid in local:    ${CurrentUser.getUid(requireActivity())}")
+                            Log.d(TAG, " ")
+
+                            val bitmap  = Toolbox.imageUriToBitmap(requireActivity(), imageUri)
+                            val resized = Toolbox.resizeBitmap(bitmap!!, 500, 500)
+                            val bytes   = Toolbox.bitmapToByteArray(resized)
+
+                            updateUserFragment(uid, bytes, name)
+                        } else{
+                            showErrorMessage("Firebase 로그인 실패 ${task.exception}", "가입 실패")
+                        }
+                    }
+            }.addOnFailureListener { e ->
+                showErrorMessage("사용자 추가 실패 $e", "가입 실패")
+            }
+    }
+
+    private fun updateUserFragment(uid: String, image: ByteArray?, name: String) {
+        val intent = Intent()
+            .putExtra("uid", uid)
+            .putExtra("image", image)
+            .putExtra("name", name)
+        requireActivity().setResult(Activity.RESULT_OK, intent)
+        requireActivity().finish()
+    }
+
+
+
+
+
+
+
+
+
+
+    private fun showProgressBar(visible: Boolean) {
+        if (visible) {
+            binding.ui.visibility = View.INVISIBLE
+            binding.progressBar.visibility = View.VISIBLE
+        } else {
+            binding.ui.visibility = View.VISIBLE
+            binding.progressBar.visibility = View.INVISIBLE
+        }
+    }
+
+    private fun showErrorMessage(log: String?, toast: String?) {
+        if (log != null) {
+            Log.e(TAG, "                                  $log")
+        }
+        if (toast != null) {
+            Toolbox.makeToast(requireActivity(), toast)
+        }
+        showProgressBar(false)
+    }
 
     private fun addTextChangedListener() {
         binding.idEditText.addTextChangedListener(object : TextWatcher {
@@ -177,15 +274,12 @@ class RegisterFragment : Fragment() {
             override fun afterTextChanged(p0: Editable?) {
                 if (binding.idEditText.text.toString().trim().isNotEmpty() &&
                     binding.passwordEditText.text.toString().trim().isNotEmpty() &&
-                    binding.nameEditText.text.toString().trim().isNotEmpty()) {
-
-                    filledAllBlanks = true
-
+                    binding.passwordEditText.length() >= 6 &&
+                    binding.nameEditText.text.toString().trim().isNotEmpty()
+                ) {
                     binding.registerButton.visibility = View.VISIBLE
                     binding.registerButtonInactive.visibility = View.INVISIBLE
                 } else {
-                    filledAllBlanks = false
-
                     binding.registerButton.visibility = View.INVISIBLE
                     binding.registerButtonInactive.visibility = View.VISIBLE
                 }
@@ -200,20 +294,12 @@ class RegisterFragment : Fragment() {
             override fun afterTextChanged(p0: Editable?) {
                 if (binding.idEditText.text.toString().trim().isNotEmpty() &&
                     binding.passwordEditText.text.toString().trim().isNotEmpty() &&
-                    binding.nameEditText.text.toString().trim().isNotEmpty()) {
-
-                    Log.d(TAG, "RegisterFragment > afterTextChanged() / id:       ${binding.idEditText.text}")
-                    Log.d(TAG, "                                        password: ${binding.passwordEditText.text}")
-                    Log.d(TAG, "                                        name:     ${binding.nameEditText.text}")
-                    Log.d(TAG, " ")
-
-                    filledAllBlanks = true
-
+                    binding.passwordEditText.length() >= 6 &&
+                    binding.nameEditText.text.toString().trim().isNotEmpty()
+                ) {
                     binding.registerButton.visibility = View.VISIBLE
                     binding.registerButtonInactive.visibility = View.INVISIBLE
                 } else {
-                    filledAllBlanks = false
-
                     binding.registerButton.visibility = View.INVISIBLE
                     binding.registerButtonInactive.visibility = View.VISIBLE
                 }
@@ -228,26 +314,33 @@ class RegisterFragment : Fragment() {
             override fun afterTextChanged(p0: Editable?) {
                 if (binding.idEditText.text.toString().trim().isNotEmpty() &&
                     binding.passwordEditText.text.toString().trim().isNotEmpty() &&
-                    binding.nameEditText.text.toString().trim().isNotEmpty()) {
+                    binding.nameEditText.text.toString().trim().isNotEmpty()
+                ) {
 
                     Log.d(TAG, "RegisterFragment > afterTextChanged() / id:       ${binding.idEditText.text}")
                     Log.d(TAG, "                                        password: ${binding.passwordEditText.text}")
                     Log.d(TAG, "                                        name:     ${binding.nameEditText.text}")
                     Log.d(TAG, " ")
 
-                    filledAllBlanks = true
-
                     binding.registerButton.visibility = View.VISIBLE
                     binding.registerButtonInactive.visibility = View.INVISIBLE
                 } else {
-                    filledAllBlanks = false
-
                     binding.registerButton.visibility = View.INVISIBLE
                     binding.registerButtonInactive.visibility = View.VISIBLE
                 }
             }
         })
     }
+
+
+
+
+
+
+
+
+
+
 
     override fun onDestroyView() {
         super.onDestroyView()

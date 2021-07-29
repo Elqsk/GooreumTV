@@ -3,6 +3,7 @@ package com.example.gooreumtv.ui.user
 import android.app.Activity
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -26,6 +27,7 @@ import com.example.gooreumtv.MainActivity.Companion.TAG
 import com.example.gooreumtv.databinding.FragmentUserBinding
 import com.example.gooreumtv.ui.register.RegisterFragment
 import com.google.common.reflect.TypeToken
+import com.google.firebase.firestore.ktx.toObject
 import com.google.gson.GsonBuilder
 
 class UserFragment : Fragment() {
@@ -63,50 +65,82 @@ class UserFragment : Fragment() {
     }
 
     private fun checkLoginState() {
+        val uid = CurrentUser.getUid(requireActivity())
 
-        val session = requireActivity().getSharedPreferences("session", AppCompatActivity.MODE_PRIVATE)
-        if (session != null) {
+        Log.d(TAG, "UserFragment > ▶ 로그인 체크 / uid: $uid")
 
-            val uid = session.getInt("user", 0)
+        // 로그인 되어 있음
+        if (uid != null) {
+            // 매번 서버에서 데이터를 가져오지 않기 위해, 앱을 실행 중인 동안에는 액티비티에 변수로 저장해 놓고 사용한다.
+            if (MainActivity.USER_EMAIL != null && MainActivity.USER_IMAGE != null && MainActivity.USER_NAME != null) {
+                updateUI(
+                    MainActivity.USER_NAME,
+                    MainActivity.USER_IMAGE!!
+                )
+            } else {
+                showProgressBar(true)
 
-            Log.d(TAG, "UserFragment > ▶ checkLoginState / 사용자 uid: $uid")
+                // 사용자 정보 로드
+                MyFirebase.getUsers()
+                    .document(uid)
+                    .get()
+                    .addOnSuccessListener { document ->
+                        Log.d(TAG, "               사용자 정보 로드 성공..")
 
-            // 로그인 중임
-            if (uid > 0) {
-                binding.guestInterface.visibility = View.INVISIBLE
+                        val user: User? = document.toObject()
+                        if (user != null) {
 
-                val usersDB = requireActivity().getSharedPreferences("users", AppCompatActivity.MODE_PRIVATE)
-                if (usersDB != null) {
-                    val value = usersDB.getString(uid.toString(), null)
+                            val name  = user.name
+                            val email = user.email
 
-                    val token: TypeToken<User> = object : TypeToken<User>() {}
-                    val gson = GsonBuilder().create()
+                            Log.d(TAG, "               name:  $name")
+                            Log.d(TAG, "               email: $email")
+                            Log.d(TAG, "               image: ${user.image}")
 
-                    val user: User = gson.fromJson(value, token.type)
+                            // 프로필 사진 다운로드
+                            MyFirebase.downloadUserImage(user.image)
+                                ?.addOnSuccessListener {
+                                    if (it != null) {
+                                        Log.d(TAG, "               로그인 성공!")
 
-                    val image = Uri.parse(user.image)
-                    val name  = user.name
+                                        val bitmap = Toolbox.byteArrayToBitmap(it)
+                                        if (bitmap != null) {
+                                            MainActivity.USER_IMAGE = bitmap
+                                            MainActivity.USER_EMAIL = email
+                                            MainActivity.USER_NAME  = name
 
-                    Log.d(TAG, "                                    value: $value")
-                    Log.d(TAG, "                                    user:  $user")
-                    Log.d(TAG, "                                    image: $image")
-                    Log.d(TAG, "                                    이름:   $name")
-                    Log.d(TAG, " ")
-
-                    Glide.with(this)
-                        .load(image)
-                        .circleCrop()
-                        .into(binding.imageView)
-                    binding.nameView.text = name
-                }
-                binding.membershipInterface.visibility = View.VISIBLE
+                                            updateUI(name, bitmap)
+                                        }
+                                        Log.d(TAG, "               bytes:  $it")
+                                        Log.d(TAG, "               bitmap: $bitmap")
+                                        Log.d(TAG, " ")
+                                    }
+                                }?.addOnFailureListener { e ->
+                                    showErrorMessage("이미지 다운로드 실패 $e")
+                                    showErrorMessage("이미지 다운로드 실패 ${e.cause}")
+                                    showErrorMessage("이미지 다운로드 실패 ${e.message}")
+                                }
+                        }
+                    }.addOnFailureListener { e ->
+                        showErrorMessage("사용자 정보 로드 실패 $e")
+                    }
             }
-            // 로그인 중 아님
-            else {
-                binding.membershipInterface.visibility = View.INVISIBLE
-                binding.guestInterface.visibility = View.VISIBLE
-            }
+        } else {
+            // 로그인 상태 아님
+            // UI 게스트 모드
+            binding.guestInterface.visibility = View.VISIBLE
         }
+    }
+
+    private fun updateUI(name: String?, image: Bitmap) {
+        binding.nameView.text = name
+        Glide.with(this)
+            .load(image)
+            .circleCrop()
+            .into(binding.imageView)
+
+        showProgressBar(false)
+        binding.membershipInterface.visibility = View.VISIBLE
     }
 
     private fun goToMyVideo() {
@@ -120,28 +154,32 @@ class UserFragment : Fragment() {
         binding.goToLoginButton.setOnClickListener {
             val intent = Intent(activity, LoginActivity::class.java)
 
-            startLoginActivity.launch(intent)
+            startSignInActivity.launch(intent)
             // 로그인 액티비티 시작
         }
     }
-    private val startLoginActivity =
+    private val startSignInActivity =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             result ->
+            Log.d(TAG, "UserFragment > [ login ] 후")
+
         if (result.resultCode == Activity.RESULT_OK) {
             // 로그인 액티비티 종료
             val uid  = result.data?.getStringExtra("uid")
             val name = result.data?.getStringExtra("name")
-            val imageString = result.data?.getStringExtra("image")
+            val imageBytes = result.data?.getByteArrayExtra("image")
 
             Log.d(TAG, "UserFragment > [ login ] / uid:   $uid")
-            Log.d(TAG, "                           image: $imageString")
+            Log.d(TAG, "                           image: $imageBytes")
             Log.d(TAG, "                           name:  $name")
             Log.d(TAG, " ")
 
-            if (uid != null && imageString != null && name != null) {
+            val imageBitmap = Toolbox.byteArrayToBitmap(imageBytes)
+
+            if (uid != null && name != null) {
                 // ▽ 로그인 성공 시 각 뷰에 사용자 정보 설정
                 Glide.with(this)
-                    .load(imageString)
+                    .load(imageBitmap)
                     .circleCrop()
                     .into(binding.imageView)
 
@@ -170,6 +208,40 @@ class UserFragment : Fragment() {
             binding.guestInterface.visibility = View.VISIBLE
         }
     }
+
+
+
+
+
+
+
+
+
+
+    private fun showProgressBar(visible: Boolean) {
+        if (visible) {
+            binding.guestInterface.visibility = View.INVISIBLE
+            binding.membershipInterface.visibility = View.INVISIBLE
+            binding.progressBar.visibility = View.VISIBLE
+        } else {
+            binding.progressBar.visibility = View.INVISIBLE
+        }
+    }
+
+    private fun showErrorMessage(log: String?) {
+        if (log != null) {
+            Log.e(TAG, "               $log")
+        }
+    }
+
+
+
+
+
+
+
+
+
 
     override fun onDestroyView() {
         super.onDestroyView()

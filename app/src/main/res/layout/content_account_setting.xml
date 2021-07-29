@@ -7,8 +7,7 @@
     app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
     <LinearLayout
-        android:id="@+id/logout"
-        android:onClick="logout"
+        android:id="@+id/logout_button"
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">

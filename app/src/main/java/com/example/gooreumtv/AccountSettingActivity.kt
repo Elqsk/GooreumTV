@@ -15,6 +15,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
+import com.example.gooreumtv.MainActivity.Companion.TAG
 import com.example.gooreumtv.databinding.ActivityAccountSettingBinding
 
 class AccountSettingActivity : AppCompatActivity() {
@@ -30,36 +31,35 @@ class AccountSettingActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+        signOut()
     }
 
-    fun logout(view: View) {
-        // Use the Builder class for convenient dialog construction
-        val builder = AlertDialog.Builder(this)
-        builder.setMessage("로그아웃합니다")
-            .setPositiveButton("확인",
-                DialogInterface.OnClickListener { dialog, id ->
-                    val session = getSharedPreferences("session", AppCompatActivity.MODE_PRIVATE)
-                    if (session != null) {
-                        val editor = session.edit()
-                        editor.remove("user")
-                        editor.apply()
+    private fun signOut() {
+        binding.content.logoutButton.setOnClickListener {
+            // Use the Builder class for convenient dialog construction
+            val builder = AlertDialog.Builder(this)
+            builder.setMessage("로그아웃합니다")
+                .setPositiveButton("확인",
+                    DialogInterface.OnClickListener { dialog, id ->
+                        CurrentUser.signOut(this)
+//                        MyFirebase.signOut()
 
-                        Log.d(MainActivity.TAG, "LoginFragment > Logged out")
-                        Log.d(MainActivity.TAG, " ")
+                        Log.d(TAG, "AccountSettingActivity > [ Logout ] 로그아웃되었습니다.")
+                        Log.d(TAG, " ")
 
                         val intent = Intent()
                         intent.putExtra("login", false)
                         setResult(RESULT_OK, intent)
                         finish()
-                        // ▷ UserFragment UI 변경
-                    }
-                })
-            .setNegativeButton("취소",
-                DialogInterface.OnClickListener { dialog, id ->
-                    // User cancelled the dialog
-                })
-        // Create the AlertDialog object and return it
-        builder.create()
-            .show()
+                        // >> UserFragment
+                    })
+                .setNegativeButton("취소",
+                    DialogInterface.OnClickListener { dialog, id ->
+                        // User cancelled the dialog
+                    })
+            // Create the AlertDialog object and return it
+            builder.create().show()
+        }
     }
 }

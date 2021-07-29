@@ -1,6 +1,7 @@
 package com.example.gooreumtv
 
 import android.content.SharedPreferences
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -41,5 +42,9 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val TAG = "exo_2"
+
+        var USER_IMAGE: Bitmap? = null
+        var USER_EMAIL: String? = null
+        var USER_NAME: String?  = null
     }
 }
