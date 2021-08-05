@@ -2,7 +2,6 @@ package com.example.gooreumtv.ui.login
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -59,60 +58,70 @@ class LoginFragment : Fragment() {
 
     private fun login() {
         binding.loginButton.setOnClickListener {
-            showProgressBar(true)
+            Toolbox.showProgressBar(binding.ui, binding.progressBar, true)
             Toolbox.hideKeyboard(requireActivity(), binding.loginButton)
 
             val email    = binding.idEditText.text.toString()
             val password = binding.passwordEditText.text.toString()
 
+            // 이메일을 검색해서 가입된 사용자인지 확인
             MyFirebase.findUserWithEmail(email)
                 .addOnSuccessListener { documents ->
-                    for (document in documents) {
-                        Log.d(TAG, "LoginFragment > [ login ] / 이메일 있음..")
+                    Log.d(TAG, "LoginFragment > [ login ] / 사용자 검색 성공..")
 
-                        val uid  = document.id
-                        val user = document.toObject<User>()
-                        val name = user.name
-                        val pass = user.password
-                        Log.d(TAG, "                            uid:   $uid")
-                        Log.d(TAG, "                            name:  $name")
-                        Log.d(TAG, "                            image: ${user.image}")
+                    if (!documents.isEmpty) {
+                        Log.d(TAG, "                이메일 있음..")
 
-                        // 비밀번호 까지 일치하는지 확인
-                        if (password == pass) {
-                            Log.d(TAG, "                            비밀번호 일치함..")
+                        for (document in documents) {
+                            val data = document.toObject<UserData>()
 
-                            // 프로필 사진 다운로드
-                            MyFirebase.downloadUserImage(user.image)
-                                ?.addOnSuccessListener {
-                                    Log.d(TAG, "                            프로필 사진 다운로드 성공..")
+                            val uid  = document.id
+                            val name = data.name
+                            val pass = data.password
+                            Log.d(TAG, "                            uid:   $uid")
+                            Log.d(TAG, "                            name:  $name")
+                            Log.d(TAG, "                            image: ${data.image}")
 
-                                    // Firebase 로그인
-                                    MyFirebase.signIn(email, password).addOnCompleteListener { task ->
-                                        if (task.isSuccessful) {
-                                            Log.d(TAG, "                            로그인 성공! ")
+                            // 비밀번호 까지 일치하는지 확인
+                            if (password == pass) {
+                                Log.d(TAG, "                비밀번호 일치함..")
 
-                                            // 로컬에 로그인 상태 저장
-                                            CurrentUser.signIn(requireActivity(), uid)
+                                // 프로필 사진 다운로드
+                                MyFirebase.downloadFileWithPath(data.image)
+                                    ?.addOnSuccessListener {
+                                        Log.d(TAG, "                프로필 사진 다운로드 성공..")
 
-                                            Log.d(TAG, "                            bytes: $it")
-                                            Log.d(TAG, "                            size:  ${it.size}")
-                                            Log.d(TAG, " ")
+                                        // Firebase 로그인
+                                        MyFirebase.signIn(email, password).addOnCompleteListener { task ->
+                                            if (task.isSuccessful) {
+                                                Log.d(TAG, "                로그인 성공! ")
 
-                                            updateUserFragment(uid, it, name)
-                                        } else {
-                                            showErrorMessage("Firebase 로그인 실패 ${task.exception}", "로그인 실패")
+                                                // 로컬에 로그인 상태 저장
+                                                CurrentUser.signIn(requireActivity(), uid)
+
+                                                Log.d(TAG, "                            bytes: $it")
+                                                Log.d(TAG, "                            size:  ${it.size}")
+                                                Log.d(TAG, " ")
+
+                                                updateUserFragment(uid, it, name)
+                                            } else {
+                                                showErrorMessage("Firebase 로그인 실패 ${task.exception}", "로그인 실패")
+                                            }
                                         }
+                                    }?.addOnFailureListener { e ->
+                                        showErrorMessage("이미지 다운로드 실패 $e", "로그인 실패")
                                     }
-                                }?.addOnFailureListener { e ->
-                                    showErrorMessage("이미지 다운로드 실패 $e", "로그인 실패")
-                                }
-                        } else {
-                            showErrorMessage("비밀번호 불일치", "계정을 찾을 수 없습니다")
+                            } else {
+                                showErrorMessage("비밀번호 불일치", "계정을 찾을 수 없습니다")
+                            }
                         }
+                    } else {
+                        Toolbox.showProgressBar(binding.ui, binding.progressBar, false)
+                        Toolbox.makeToast(requireActivity(), "계정을 찾을 수 없습니다")
+                        Log.w(TAG, "                빈 문서")
                     }
-                }.addOnFailureListener { exception ->
-                    showErrorMessage("이메일 없음 $exception", "계정을 찾을 수 없습니다")
+                }.addOnFailureListener { e ->
+                    showErrorMessage("사용자 검색 실패 $e", "로그인 오류")
                 }
         }
     }
@@ -144,17 +153,7 @@ class LoginFragment : Fragment() {
         if (toast != null) {
             Toolbox.makeToast(requireActivity(), toast)
         }
-        showProgressBar(false)
-    }
-
-    private fun showProgressBar(visible: Boolean) {
-        if (visible) {
-            binding.ui.visibility = View.INVISIBLE
-            binding.progressBar.visibility = View.VISIBLE
-        } else {
-            binding.ui.visibility = View.VISIBLE
-            binding.progressBar.visibility = View.INVISIBLE
-        }
+        Toolbox.showProgressBar(binding.ui, binding.progressBar, false)
     }
 
     private fun addTextChangedListener() {

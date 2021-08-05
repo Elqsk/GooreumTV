@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatActivity
 
-// 현재 사용자의 정보를 편하게 불러오기 위한 클래스
+// 로컬에 저장된 현재 사용자의 정보를 편하게 불러오기 위한 클래스
 class CurrentUser {
     companion object {
         private const val PREFS_NAME = "current_user"

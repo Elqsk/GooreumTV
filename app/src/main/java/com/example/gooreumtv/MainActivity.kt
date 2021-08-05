@@ -43,8 +43,9 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val TAG = "exo_2"
 
-        var USER_IMAGE: Bitmap? = null
+        // 앱을 실행중인 동안에는 매번 사용자 화면으로 돌아와도 서버에서 받아오지 않고 변수에 저장해놓고 쓴다.
+        var USER_IMAGE: ByteArray? = null
         var USER_EMAIL: String? = null
-        var USER_NAME: String?  = null
+        var USER_NAME:  String? = null
     }
 }

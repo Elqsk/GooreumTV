@@ -45,14 +45,38 @@ class RegisterFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        addTextChangedListener()
+        goToSignIn()
 
-        binding.goToLoginButton.setOnClickListener {
-            findNavController().navigate(R.id.action_LogoutFragment_to_LoginFragment)
-        }
+        listenTextChanged()
         addImage()
         signUp()
     }
+
+
+
+
+
+
+
+
+
+
+
+    private fun goToSignIn() {
+        binding.goToLoginButton.setOnClickListener {
+            findNavController().navigate(R.id.action_LogoutFragment_to_LoginFragment)
+        }
+    }
+
+
+
+
+
+
+
+
+
+
 
     private var imageUri: Uri? = null
 
@@ -68,9 +92,6 @@ class RegisterFragment : Fragment() {
         Manifest.permission.WRITE_EXTERNAL_STORAGE
     )
     private fun checkPermissions() {
-        Log.d(TAG, "RegisterFragment > checkPermissions / READ:  ${ContextCompat.checkSelfPermission(requireActivity(), permissions[0])}")
-        Log.d(TAG, "                                      WRITE: ${ContextCompat.checkSelfPermission(requireActivity(), permissions[1])}")
-
         // 권한이 모두 수락되었는지 체크
         if (ContextCompat.checkSelfPermission(requireActivity(), permissions[0]) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(requireActivity(), permissions[1]) == PackageManager.PERMISSION_GRANTED
@@ -90,9 +111,6 @@ class RegisterFragment : Fragment() {
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
                 isGranted: Boolean ->
-            Log.d(TAG, "RegisterFragment > checkPermissions / register / READ:  ${ContextCompat.checkSelfPermission(requireActivity(), permissions[0])}")
-            Log.d(TAG, "                                                 WRITE: ${ContextCompat.checkSelfPermission(requireActivity(), permissions[1])}")
-
             if (isGranted) {
                 // 권한이 수락되면 다시 권한이 모두 수락되었는지 체크
                 checkPermissions()
@@ -121,6 +139,16 @@ class RegisterFragment : Fragment() {
         }
     }
 
+
+
+
+
+
+
+
+
+
+
     private fun signUp() {
         binding.registerButton.setOnClickListener {
             showProgressBar(true)
@@ -129,11 +157,24 @@ class RegisterFragment : Fragment() {
             val email    = binding.idEditText.text.toString()
             val password = binding.passwordEditText.text.toString()
             val name     = binding.nameEditText.text.toString()
+            val datetime = Toolbox.getCurrentDatetime()
 
-            Log.d(TAG, "RegisterFragment > [ Register ] / email:    $email")
-            Log.d(TAG, "                                  password: $password")
-            Log.d(TAG, "                                  name:     $name")
-            Log.d(TAG, "                                  imageUri: ${imageUri.toString()}")
+            val bitmap  = Toolbox.imageUriToBitmap(requireActivity(), imageUri)
+            val resized = Toolbox.resizeBitmap(bitmap!!, 500, 500)
+            val bytes   = Toolbox.bitmapToByteArray(resized)
+
+            // 이미지는 너무 커서 Storage에 따로 저장하고, 사용자 정보에는 파일 경로를 저장한다. 'images/' 폴더
+            // 안에 저장한다는 뜻인데, 그냥 파일명만 쓰면 폴더 없이 파일만 저장된다. 이미지를 선택하지 않은 경우에는
+            // 기본 이미지로 대체한다. 가져올 때에는 'images/'를 붙이지 않아도 된다.
+            val dir      = "images/" +
+                    if (imageUri == null) "user.png"
+                    else Toolbox.createFilename() + ".jpeg"
+
+            Log.d(TAG, "RegisterFragment > [ Sign Up ] / email:    $email")
+            Log.d(TAG, "                                 password: $password")
+            Log.d(TAG, "                                 name:     $name")
+            Log.d(TAG, "                                 datetime: $datetime")
+            Log.d(TAG, "                                 dir:      $dir")
 
             // 중복(사용할 수 있는 계정인지) 검사
             MyFirebase.findUserWithEmail(email)
@@ -147,33 +188,29 @@ class RegisterFragment : Fragment() {
                             if (task.isSuccessful) {
                                 Log.d(TAG, "                                  Firbase 인증 성공..")
 
-                                // 이미지는 너무 커서 Storage에 따로 저장하고, 사용자 정보에는 파일 경로를 저장한다.
-                                // 'images/' 폴더 안에 저장한다는 뜻인데, 그냥 파일명만 쓰면 폴더 없이 파일만 저장된다.
-                                // 이미지를 선택하지 않은 경우에는 기본 이미지로 대체한다.
-                                val dir   = "images/" +
-                                        if (imageUri == null)
-                                            "user.png"
-                                        else
-                                            Toolbox.createFilename(Toolbox.JPEG)
-                                val bitmap  = Toolbox.imageUriToBitmap(requireActivity(), imageUri)
-                                val resized = Toolbox.resizeBitmap(bitmap!!, 500, 500)
-                                val bytes   = Toolbox.bitmapToByteArray(resized)
                                 if (bytes != null) {
                                     // 이미지 업로드
-                                    MyFirebase.uploadUserImage(bytes, dir)
+                                    MyFirebase.uploadFileWithByteArray(bytes, dir)
                                         .addOnSuccessListener {
                                             Log.d(TAG, "                                  이미지 업로드 성공..")
 
                                             // 서버(Firestore)에 사용자 정보 저장
-                                            addUser(email, password, name, dir)
-
+                                            if (datetime != null) {
+                                                addUser(email, password, name, dir, datetime)
+                                            } else {
+                                                showErrorMessage("날짜: $datetime", "가입 실패")
+                                            }
                                         }.addOnFailureListener { e ->
                                             showErrorMessage("이미지 업로드 실패 $e", "가입 실패")
                                         }
                                 } else {
                                     // 기본 이미지가 들어가는 경우, 이미지 업로드 과정 없이 바로 서버(Firestore)에
                                     // 사용자 정보 저장
-                                    addUser(email, password, name, dir)
+                                    if (datetime != null) {
+                                        addUser(email, password, name, dir, datetime)
+                                    } else {
+                                        showErrorMessage("날짜: $datetime", "가입 실패")
+                                    }
                                 }
                             } else {
                                 showErrorMessage("Firebase 인증 실패 ${task.exception}", "가입 실패")
@@ -187,13 +224,13 @@ class RegisterFragment : Fragment() {
                 }
         }
     }
-
-    private fun addUser(email: String, password: String, name: String, image: String) {
+    private fun addUser(email: String, password: String, name: String, image: String, datetime: String) {
         val user = hashMapOf(
             "email"    to email,
             "password" to password,
             "name"     to name,
-            "image"    to image
+            "image"    to image,
+            "datetime" to datetime
         )
         MyFirebase.signUp(user)
             .addOnSuccessListener { documentReference ->
@@ -265,7 +302,7 @@ class RegisterFragment : Fragment() {
         showProgressBar(false)
     }
 
-    private fun addTextChangedListener() {
+    private fun listenTextChanged() {
         binding.idEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
 

@@ -24,6 +24,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
+import com.bumptech.glide.Glide
 import com.example.gooreumtv.databinding.ActivityPlayerBinding
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.source.MediaSource
@@ -35,7 +36,9 @@ import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.MimeTypes
 import com.google.android.exoplayer2.util.Util
+import com.google.android.gms.tasks.OnSuccessListener
 import com.google.common.reflect.TypeToken
+import com.google.firebase.firestore.ktx.toObject
 import com.google.gson.GsonBuilder
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -110,62 +113,105 @@ class PlayerActivity : AppCompatActivity() {
 
 //        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        Toolbox.showProgressBar(binding.ui, binding.progressBar, true)
+
         playerView = findViewById(R.id.video_view)
         playerEventListener = PlayerEventListener()
 
         commentList = ArrayList()
         newCommentList = ArrayList()
 
-        // 기존의 댓글 데이터를 가져온다.
-        loadData()
+        loadVideoData()
+        // 댓글 입력란의 변화를 감지해 작성 버튼이 활성화 또는 비활성화되게 한다.
+        listenTextChanged()
 
         // 화면 크기에 맞게 플레이어 뷰 크기를 조절한다.
         resizePlayerView()
-        // 댓글 입력란의 변화를 감지해 작성 버튼이 활성화 또는 비활성화되게 한다.
-        addTextChangedListener()
         // 재생 바의 이동을 감지해 구름자막을 다시 배치한다.
         addScrubListener()
+
+        comment()
     }
 
-    private fun loadData() {
-        prefs = getSharedPreferences("comments", MODE_PRIVATE)
-//        prefs?.all?.clear()
-        val size = prefs!!.all.size
+    private fun loadVideoData() {
+        val title = intent.getStringExtra("title")
+        val desc  = intent.getStringExtra("description")
+        val path  = intent.getStringExtra("path")
+        val datetime  = intent.getStringExtra("datetime")
+        val userUid   = intent.getStringExtra("user_uid")
+        val username  = intent.getStringExtra("username")
+        val userImage = intent.getByteArrayExtra("user_image")
 
-        val token: TypeToken<Comment> = object : TypeToken<Comment>() {}
-        val gson = GsonBuilder().create()
-
-        if (size != 0) {
-            for (i in 0 until size) {
-
-                val value = prefs?.getString("$i", null)
-                commentList!!.add(i, gson.fromJson(value, token.type))
-
-                Log.d(TAG, "                                           [$i] $value")
-            }
-            Log.d(TAG, " ")
-
-            lastIndex = size - 1
-
-            for (i in 0..lastIndex) {
-                Log.d(TAG, "                                           [$i] ${commentList!![i].position} - ${commentList!![i].text}")
-            }
-        }
-        Log.d(TAG, "PlayerActivity > onCreate() / loadData() / size: $size")
-        Log.d(TAG, "                                           lastIndex: $lastIndex")
+        Log.d(TAG, "PlayerActivity >> Load Video Data / title: $title")
+        Log.d(TAG, "                                    desc:  $desc")
+        Log.d(TAG, "                                    path:  $path")
+        Log.d(TAG, "                                    datetime:  $datetime")
+        Log.d(TAG, "                                    userUid:   $userUid")
+        Log.d(TAG, "                                    username:  $username")
+        Log.d(TAG, "                                    userImage: $userImage")
         Log.d(TAG, " ")
+
+        binding.titleView.text = title
+        binding.descriptionView.text = desc
+        binding.datetimeView.text = datetime
+        binding.usernameView.text = username
+        Glide.with(this)
+            .load(userImage)
+            .into(binding.userImageView)
+
+        MyFirebase.downloadUrl(path)
+            ?.addOnSuccessListener { uri ->
+                Log.d(TAG, "                  동영상 URL 불러오기 성공! $uri")
+
+                videoUri = uri
+                ready()
+            }?.addOnFailureListener { e ->
+                Log.e(TAG, "                  동영상 URL 불러오기 실패 $e")
+            }
+
+
+
+
+
+//        prefs = getSharedPreferences("comments", MODE_PRIVATE)
+//        val size = prefs!!.all.size
+//
+//        val token: TypeToken<Comment> = object : TypeToken<Comment>() {}
+//        val gson = GsonBuilder().create()
+//
+//        if (size != 0) {
+//            for (i in 0 until size) {
+//
+//                val value = prefs?.getString("$i", null)
+//                commentList!!.add(i, gson.fromJson(value, token.type))
+//
+//                Log.d(TAG, "                                           [$i] $value")
+//            }
+//            Log.d(TAG, " ")
+//
+//            lastIndex = size - 1
+//
+//            for (i in 0..lastIndex) {
+//                Log.d(TAG, "                                           [$i] ${commentList!![i].position} - ${commentList!![i].text}")
+//            }
+//        }
+//        Log.d(TAG, "PlayerActivity > onCreate() / loadData() / size: $size")
+//        Log.d(TAG, "                                           lastIndex: $lastIndex")
+//        Log.d(TAG, " ")
     }
 
     public override fun onStart() {
         super.onStart()
 
-        Log.d(TAG, "PlayerActivity > onStart() / playbackPosition: $playbackPosition")
-        Log.d(TAG, "PlayerActivity > onStart() / prefs:   $prefs")
-        Log.d(TAG, "PlayerActivity > onStart() / handler: $handler")
+        Log.d(TAG, "PlayerActivity >> onStart() / playbackPosition: $playbackPosition")
+        Log.d(TAG, "                              prefs:   $prefs")
+        Log.d(TAG, "                              handler: $handler")
         Log.d(TAG, " ")
 
         if (Util.SDK_INT > 23 || player == null) {
-            ready()
+            if (videoUri != null) {
+                ready()
+            }
         }
     }
 
@@ -174,13 +220,15 @@ class PlayerActivity : AppCompatActivity() {
         // 전체 화면 모드
 //        hideSystemUi()
 
-        Log.d(TAG, "PlayerActivity > onResume() / playbackPosition: $playbackPosition")
-        Log.d(TAG, "PlayerActivity > onResume() / prefs:   $prefs")
-        Log.d(TAG, "PlayerActivity > onResume() / handler: $handler")
+        Log.d(TAG, "PlayerActivity >> onResume() / playbackPosition: $playbackPosition")
+        Log.d(TAG, "                               prefs:   $prefs")
+        Log.d(TAG, "                               handler: $handler")
         Log.d(TAG, " ")
 
         if (Util.SDK_INT <= 23 || player == null) {
-            ready()
+            if (videoUri != null) {
+                ready()
+            }
         }
     }
 
@@ -196,7 +244,7 @@ class PlayerActivity : AppCompatActivity() {
     // 처음부터 플레이어를 재생하는 것이 아니고, 플레이어와 (댓글을 화면 밖에 미리 배치하는) 스레드, 핸들러,
     // (시작하자마자 작성된) 기존의 댓글들을 배치하고 애니메이션 적용 까지 마쳐야 (동시에) 시작할 수 있다.
     private fun ready() {
-        Log.d(TAG, "PlayerActivity > ready() $playbackPosition")
+        Log.d(TAG, "PlayerActivity >> ready() $playbackPosition")
         Log.d(TAG, " ")
 
         initializePlayer()
@@ -209,9 +257,11 @@ class PlayerActivity : AppCompatActivity() {
         go()
     }
 
+    private lateinit var videoBytes: ByteArray
+    private var videoUri: Uri? = null
+
     private fun initializePlayer() {
-        Log.d(TAG, "PlayerActivity > initializePlayer() $playbackPosition")
-        Log.d(TAG, " ")
+        Log.d(TAG, "PlayerActivity >> Ready / initializePlayer() / playbackPosition: $playbackPosition")
 
         if (player == null) {
 
@@ -230,42 +280,43 @@ class PlayerActivity : AppCompatActivity() {
         player!!.seekTo(playbackPosition)
         player!!.addListener(playerEventListener!!)
 
-        Log.d(TAG, "PlayerActivity > ready() / initializePlayer() / playerView.player:    ${playerView!!.player}")
-        Log.d(TAG, "                                                playWhenReady:        $playWhenReady")
-        Log.d(TAG, "                                                player.playWhenReady: ${player!!.playWhenReady}")
-        Log.d(TAG, "                                                playerEventListener:  $playerEventListener")
-        Log.d(TAG, "                                                player.seekTo($currentWindow, $playbackPosition)")
+        Log.d(TAG, "                                               playWhenReady: $playWhenReady")
+        Log.d(TAG, "                                               playerView.player: ${playerView!!.player}")
+        Log.d(TAG, "                                               playerEventListener:  $playerEventListener")
+        Log.d(TAG, "                                               player.playWhenReady: ${player!!.playWhenReady}")
+        Log.d(TAG, "                                                     .seekTo($currentWindow, $playbackPosition)")
         Log.d(TAG, " ")
 
-        // 내부 파일 재생
-        val uri = "https://www.youtube.com/api/manifest/dash/id/bf5bb2419360daf1/source/youtube?as=fmp4_audio_clear,fmp4_sd_hd_clear&sparams=ip,ipbits,expire,source,id,as&ip=0.0.0.0&ipbits=0&expire=19000000000&signature=51AF5F39AB0CEC3E5497CD9C900EBFEAECCCB5C7.8506521BFC350652163895D4C26DEE124209AA9E&key=ik0"
-        val uri2 = getString(R.string.media_url_dash)
+        // string에 지정된 URL 재생
+        val url = getString(R.string.media_url_dash)
         val mediaItem = MediaItem.Builder()
-            .setUri(uri)
+            .setUri(videoUri)
             .setMimeType(MimeTypes.APPLICATION_MPD)
             .build()
-        player!!.setMediaItem(mediaItem)
+//        player!!.setMediaItem(mediaItem)
 //        player!!.prepare()
 
-        /*
-         * (인터넷상의) 외부 파일 재생
-         *
-         * 외부 파일이라 그런지 화면을 나갔다 들어왔을 때 재생 지점이 초기화되어 있다. 외부 파일 재생 전용 재생 유지
-         * 코드를 따로 만들어줘야 할 것 같다.
-         */
-        val url = "https://storage.googleapis.com/exoplayer-test-media-0/BigBuckBunny_320x180.mp4"
-        val mediaSource = buildMediaSource2(Uri.parse(url))
-        // prepare()는 말 그대로 플레이어를 준비하는(영상을 가져오는) 작업이고, playWhenReady가 true가 되면
-        // 영상을 재생한다.
-        player!!.prepare(mediaSource, true, false)
+        // (외부) URL 재생
+        // 화면을 나갔다 들어왔을 때 재생 지점이 초기화되어 있다. 외부 파일 재생 전용 재생 유지 코드를 따로 만들어줘야
+        // 할 것 같다.
+        val url2 = "https://storage.googleapis.com/exoplayer-test-media-0/BigBuckBunny_320x180.mp4"
+        val url3 = "https://storage.googleapis.com/gooreumtv.appspot.com/videos/BigBuckBunny_320x180.mp4"
+        if (videoUri != null) {
+            // prepare()는 말 그대로 플레이어를 준비하는(영상을 가져오는) 작업이고, playWhenReady가 true가 되면
+            // 영상을 재생한다.
+            val mediaSource = buildMediaSource2(videoUri!!)
+            player!!.prepare(mediaSource, true, false)
+
 //        playWhenReady = true
 //        player!!.playWhenReady = playWhenReady
-
+        }
         player!!.setThrowsWhenUsingWrongThread(false)
     }
 
     // 곧 애니메이팅하며 오른쪽에서부터 화면에 보일 댓글들을 준비한다.
     private fun initializeThreadAndHandler() {
+        Log.d(TAG, "PlayerActivity >> Ready / initializeThreadAndHandler()")
+
         // 현재 재생 시점에 배치되어야 하는 댓글들을 미리 화면 오른쪽 밖에 준비해둔다. 모든 댓글들을 텍스트 뷰로
         // 준비할 수 없으므로 당장 필요한 댓글 데이터만 가져와서 배치하고, 왼쪽 화면 밖으로 벗어나 애니메이션이 종료된
         // 댓글은 텍스트 뷰를 클리어한다. 준비되는 텍스트 뷰는 총 30개이기 때문에, 특정 시점에 댓글이 너무 많을
@@ -273,17 +324,16 @@ class PlayerActivity : AppCompatActivity() {
         if (thread == null) {
             thread = Thread(Runnable() {
                 run() {
-                    Log.d(TAG, "PlayerActivity > thread: Thread / 시작")
-                    Log.d(TAG, "PlayerActivity > thread: Thread / $thread")
-                    Log.d(TAG, "PlayerActivity > thread name:     ${thread!!.name}")
-                    Log.d(TAG, "PlayerActivity > thread priority: ${thread!!.priority}")
-                    Log.d(TAG, "PlayerActivity > thread state:    ${thread!!.state}")
-                    Log.d(TAG, "PlayerActivity > thread / player applicationLooper: ${player!!.applicationLooper}")
-                    Log.d(TAG, "PlayerActivity > thread / player playbackLooper:    ${player!!.playbackLooper}")
-                    Log.d(TAG, "PlayerActivity > thread / Looper.myLooper():      ${Looper.myLooper()}")
-                    Log.d(TAG, "PlayerActivity > thread / Looper.getMainLooper(): ${Looper.getMainLooper()}")
+                    Log.d(TAG, "PlayerActivity / Thread > name:  ${thread!!.name}")
+                    Log.d(TAG, "                          state: ${thread!!.state}")
+                    Log.d(TAG, "                          priority: ${thread!!.priority}")
+                    Log.d(TAG, " ")
+//                    Log.d(TAG, "                 player.applicationLooper: ${player!!.applicationLooper}")
+//                    Log.d(TAG, "                       .playbackLooper:  ${player!!.playbackLooper}")
+//                    Log.d(TAG, "                 Looper.getMainLooper(): ${Looper.getMainLooper()}")
+//                    Log.d(TAG, "                       .myLooper(): ${Looper.myLooper()}")
 
-                    var currentPosition: Long = 0
+                    var currentPosition: Long
 
                     while (true) {
                         // 애니메이션 시작도 안 했는데 간발의 차로 먼저 시작한 영사의 재생 시점에 맞춰서 애니 관련
@@ -307,8 +357,7 @@ class PlayerActivity : AppCompatActivity() {
                                     // 놓는다.
                                     if (commentList!![i].position!! >= currentPosition + 4000 &&
                                         commentList!![i].position!! < currentPosition + 5000) {
-                                        Log.d(TAG, "PlayerActivity > thread: Thread / " +
-                                                "[$i] $currentPosition - ${commentList!![i].position}")
+                                        Log.d(TAG, "                          [$i] $currentPosition - ${commentList!![i].position}")
 
                                         val msg = Message()
                                         msg.arg1 = i
@@ -319,10 +368,10 @@ class PlayerActivity : AppCompatActivity() {
                                 }
                                 // 1초 마다 1초 만큼의 댓글들을 불러와 화면 밖에 배치한다.
                                 try {
-                                    Log.d(TAG, "PlayerActivity > thread: Thread / sleep")
+                                    Log.d(TAG, "PlayerActivity > Thread sleep")
                                     Thread.sleep(1000)
                                 } catch (e: InterruptedException) {
-                                    Log.d(TAG, "PlayerActivity > thread: Thread / 종료")
+                                    Log.w(TAG, "PlayerActivity > Thread $e")
                                 }
                             }
                         }
@@ -331,8 +380,6 @@ class PlayerActivity : AppCompatActivity() {
             })
         }
         if (handler == null) {
-            Log.d(TAG, "PlayerActivity > handler: Handler")
-
             handler = object : Handler(Looper.getMainLooper()) {
                 override fun handleMessage(msg: Message) {
                     super.handleMessage(msg)
@@ -370,10 +417,10 @@ class PlayerActivity : AppCompatActivity() {
                             getMarginLeft(msg.arg2.toLong(), commentList!![index].position!!)
                         v.layoutParams = params
 
-                        Log.d(TAG, "PlayerActivity > handler: Handler / [$index] ${msg.arg2.toLong()} - ${commentList!![index].position!!}")
-                        Log.d(TAG, "                                    [$index] text:       ${commentList!![index].text}")
-                        Log.d(TAG, "                                    [$index] width:      ${commentList!![index].width!!}")
-                        Log.d(TAG, "                                    [$index] marginLeft: ${params.leftMargin}")
+                        Log.d(TAG, "PlayerActivity / Handler > [$index] ${msg.arg2.toLong()} - ${commentList!![index].position!!}")
+                        Log.d(TAG, "                           [$index] text:       ${commentList!![index].text}")
+                        Log.d(TAG, "                           [$index] width:      ${commentList!![index].width!!}")
+                        Log.d(TAG, "                           [$index] marginLeft: ${params.leftMargin}")
 
                         applyAnimation(index)
                     }
@@ -392,18 +439,18 @@ class PlayerActivity : AppCompatActivity() {
         val currentPosition = player!!.currentPosition
 
         if (commentList != null) {
-            Log.d(TAG, "PlayerActivity > addViews() / currentPosition:  $currentPosition")
-            Log.d(TAG, "                              commentList.size: ${commentList!!.size}")
+            Log.d(TAG, "PlayerActivity > Ready / addViews() / currentPosition:  $currentPosition")
+            Log.d(TAG, "                                      commentList.size: ${commentList!!.size}")
 
             for (i in 0 until commentList!!.size) {
 
                 if (commentList!![i].position!! > currentPosition - 8000 &&
-                    commentList!![i].position!! < currentPosition + 4000) {
-
-                    Log.d(TAG, "PlayerActivity > addViews() / [$i] text:     ${commentList!![i].text}")
-                    Log.d(TAG, "                              [$i] width:    ${commentList!![i].width}")
-                    Log.d(TAG, "                              [$i] height:   ${commentList!![i].height}")
-                    Log.d(TAG, "                              [$i] position: ${commentList!![i].position}")
+                    commentList!![i].position!! < currentPosition + 4000
+                ) {
+                    Log.d(TAG, "                                      [$i] text:     ${commentList!![i].text}")
+                    Log.d(TAG, "                                      [$i] width:    ${commentList!![i].width}")
+                    Log.d(TAG, "                                      [$i] height:   ${commentList!![i].height}")
+                    Log.d(TAG, "                                      [$i] position: ${commentList!![i].position}")
 
                     val v = initCommentView()
                     v.text = commentList!![i].text
@@ -432,7 +479,7 @@ class PlayerActivity : AppCompatActivity() {
                 }
             }
         }
-        Log.d(TAG, "PlayerActivity > addViews() / animation_layout.childCount: ${binding.animationLayout.childCount}")
+        Log.d(TAG, "                                      childCount: ${binding.animationLayout.childCount}")
         Log.d(TAG, " ")
     }
 
@@ -451,14 +498,16 @@ class PlayerActivity : AppCompatActivity() {
         playWhenReady = true
         player?.playWhenReady = playWhenReady
 
+        Log.d(TAG, "PlayerActivity >> Go / player?.playWhenReady: ${player?.playWhenReady}")
+        Log.d(TAG, " ")
+
         // 곧 화면에 보여질 댓글을 미리 화면 밖에 배치하는 스레드를 시작한다.
         thread?.start()
 
         // 안 보이게 해놨던 댓글들을 보이게 한다.
         binding.animationLayout.visibility = View.VISIBLE
 
-        Log.d(TAG, "PlayerActivity > go()")
-        Log.d(TAG, " ")
+        Toolbox.showProgressBar(binding.ui, binding.progressBar, false)
     }
 
 
@@ -471,13 +520,11 @@ class PlayerActivity : AppCompatActivity() {
 
 
     // 댓글 작성 버튼을 누르면새 텍스트 뷰를 생성하고, 댓글 텍스트를 넣어, 여유 공간이 있는지 확인하고, 배치한다.
-    fun comment(view: View) {
-
-        if (isAbleToComment) {
-
+    fun comment() {
+        binding.sendButton.setOnClickListener {
             val text = binding.commentEditText.text.toString()
 
-            Log.d(TAG, "PlayerActivity > comment() / 새 댓글:    $text")
+            Log.d(TAG, "PlayerActivity [ Comment ] / 새 댓글: $text")
             Log.d(TAG, "                             isPlaying: ${player!!.isPlaying}")
 
             // 30개의 텍스트 뷰 중에서 비어있는 자리를 찾아 댓글을 삽입한다.
@@ -513,9 +560,9 @@ class PlayerActivity : AppCompatActivity() {
                             // 댓글 리스트에 방금 작성한 것을 추가한다.
                             v.post(Runnable() {
                                 run() {
-                                    Log.d(TAG, "PlayerActivity > comment() / post() / marginTop: $marginTop")
-                                    Log.d(TAG, "                                      width:     ${v.width}")
-                                    Log.d(TAG, "                                      height:    ${v.height}")
+                                    Log.d(TAG, "PlayerActivity [ Comment ] / post() / marginTop: $marginTop")
+                                    Log.d(TAG, "                                      width:  ${v.width}")
+                                    Log.d(TAG, "                                      height: ${v.height}")
                                     addComment(text, player!!.currentPosition, v.width, v.height)
                                 }
                             })
@@ -541,12 +588,12 @@ class PlayerActivity : AppCompatActivity() {
                         Toast.makeText(this, "영상을 좀 더 시청한 뒤에 다시 시도해주세요", Toast.LENGTH_SHORT).show()
                 }
             }
+            // 정상적으로 잘 들어가 있는지 확인하기 위해 텍스트를 모두 출력해 본다.
+            for (i in 0..29) {
+                Log.d(TAG, "                             댓글 ${i + 1}: " + animatingComments[i]?.view?.text)
+            }
+            Log.d(TAG, " ")
         }
-        // 정상적으로 잘 들어가 있는지 확인하기 위해 텍스트를 모두 출력해 본다.
-        for (i in 0..29) {
-            Log.d(TAG, "                             댓글 ${i + 1}: " + animatingComments[i]?.view?.text)
-        }
-        Log.d(TAG, " ")
     }
 
     // 댓글을 작성하면 영상 위에 자막이 나타났다가 왼쪽으로 이동해 사라지고, 영상이 일시 정지 상태일 때에는
@@ -567,25 +614,25 @@ class PlayerActivity : AppCompatActivity() {
         val marginLeft = comments!!.view!!.marginLeft
         val value = getAnimationValue(marginLeft).toFloat()
 
-        Log.d(TAG, "PlayerActivity > applyAnimation() / [$index] marginLeft: $marginLeft")
-        Log.d(TAG, "                                    [$index] value:      $value")
+        Log.d(TAG, "PlayerActivity [ Comment ] applyAnimation() / [$index] marginLeft: $marginLeft")
+        Log.d(TAG, "                                              [$index] value:      $value")
 
         val animator = ObjectAnimator.ofFloat(comments.view!!, View.TRANSLATION_X, -value)
             .apply {
                 duration = getAnimationDuration(value).roundToLong()
             }
-        Log.d(TAG, "                                    [$index] duration:   ${animator.duration}")
+        Log.d(TAG, "                                              [$index] duration:   ${animator.duration}")
 
         animator.addListener(object : AnimatorListenerAdapter() {
             override fun onAnimationPause(animation: Animator?) {
                 super.onAnimationPause(animation)
 
-                Log.d(TAG, "PlayerActivity / AnimatorListenerAdapter() > 텍스트 뷰 $index 애니메이션 일시 정지")
+                Log.d(TAG, "PlayerActivity / AnimatorListenerAdapter > 텍스트 뷰 $index 애니메이션 일시 정지")
             }
             override fun onAnimationEnd(animation: Animator?) {
                 super.onAnimationEnd(animation)
 
-                Log.d(TAG, "PlayerActivity / AnimatorListenerAdapter() > 텍스트 뷰 $index 애니메이션 종료")
+                Log.d(TAG, "PlayerActivity / AnimatorListenerAdapter > 텍스트 뷰 $index 애니메이션 종료")
                 Log.d(TAG, " ")
 
                 // 애니메이션이 종료되면 뷰를 제거한다.
@@ -607,7 +654,7 @@ class PlayerActivity : AppCompatActivity() {
     // 영상 위에서 애니메이션 중인 댓글들을 리스트에 넣고 관리한다. 영상이 재생 및 일시 정시 상태일 때 애니메이션
     // 상태를 제어한다.
     private fun addComment(text: String, position: Long, width: Int, height: Int) {
-        Log.d(TAG, "PlayerActivity > addComment() / lastIndex: $lastIndex")
+        Log.d(TAG, "PlayerActivity [ Comment ] addComment() / lastIndex: $lastIndex")
 
         val index = lastIndex.plus(1)
         val comment = Comment(index, text, position, width, height)
@@ -651,7 +698,7 @@ class PlayerActivity : AppCompatActivity() {
      * 댓글 텍스트를 감지해 작성 버튼이 활성화 또는 비활성화되게 한다. 공백만으로 이루어져 있거나 텍스트를 아무 것도
      * 입력하지 않으면 댓글을 작성할 수 없다.
      */
-    private fun addTextChangedListener() {
+    private fun listenTextChanged() {
         binding.commentEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
@@ -660,14 +707,11 @@ class PlayerActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) {
 
                 if (binding.commentEditText.text.toString().trim().isNotEmpty()) {
-                    isAbleToComment = true
 
-                    binding.sendButtonAble.visibility = View.VISIBLE
+                    binding.sendButton.visibility = View.VISIBLE
                     binding.sendButtonDisable.visibility = View.INVISIBLE
                 } else {
-                    isAbleToComment = false
-
-                    binding.sendButtonAble.visibility = View.INVISIBLE
+                    binding.sendButton.visibility = View.INVISIBLE
                     binding.sendButtonDisable.visibility = View.VISIBLE
                 }
             }
@@ -680,18 +724,18 @@ class PlayerActivity : AppCompatActivity() {
 
         binding.exoProgress.addListener(object : TimeBar.OnScrubListener {
             override fun onScrubStart(timeBar: TimeBar, position: Long) {
-                Log.d(TAG, "PlayerActivity > TimeBar.OnScrubListener / onScrubStart() / position: $position")
+                Log.d(TAG, "PlayerActivity / OnScrubListener > onScrubStart() / position: $position")
                 Log.d(TAG, " ")
             }
 
             override fun onScrubMove(timeBar: TimeBar, position: Long) {
-                Log.d(TAG, "PlayerActivity > TimeBar.OnScrubListener / onScrubMove() / position: $position")
+                Log.d(TAG, "PlayerActivity / OnScrubListener > onScrubMove() / position: $position")
                 Log.d(TAG, " ")
             }
 
             override fun onScrubStop(timeBar: TimeBar, position: Long, canceled: Boolean) {
-                Log.d(TAG, "PlayerActivity > TimeBar.OnScrubListener / onScrubStop() / canceled: $canceled")
-                Log.d(TAG, "PlayerActivity > TimeBar.OnScrubListener / onScrubStop() / position: $position")
+                Log.d(TAG, "PlayerActivity > OnScrubListener > onScrubStop() / canceled: $canceled")
+                Log.d(TAG, "                                                   position: $position")
                 Log.d(TAG, " ")
 
                 for (i in animatingComments.indices) {
@@ -720,16 +764,15 @@ class PlayerActivity : AppCompatActivity() {
                 ExoPlayer.STATE_ENDED ->     "ExoPlayer.STATE_ENDED     - 재생 종료"
                 else ->                      "STATE_UNKNOWN             - 상태 불명"
             }
-            Log.d(TAG, "PlayerActivity / PlaybackStateListener > onPlaybackStateChanged() / playbackState: $playbackState")
+            Log.d(TAG, "PlayerActivity / EventListener > onPlaybackStateChanged() / playbackState: $playbackState")
             Log.d(TAG, "                                                                    stateString:   $stateString")
-            Log.d(TAG, "                                                                    playerEventListener: $playerEventListener")
             Log.d(TAG, " ")
         }
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
             super.onTimelineChanged(timeline, reason)
 
-            Log.d(TAG, "PlayerActivity / PlaybackStateListener > onTimelineChanged() / timeline: $timeline")
+            Log.d(TAG, "PlayerActivity / EventListener > onTimelineChanged() / timeline: $timeline")
             Log.d(TAG, "                                                               reason:   $reason")
         }
 
@@ -743,7 +786,7 @@ class PlayerActivity : AppCompatActivity() {
              * 다시 재생될 때 resume()으로 애니메이션을 재시작한다.
              */
             if (isPlaying) {
-                Log.d(TAG, "PlayerActivity / PlaybackStateListener > onIsPlayingChanged() / 재생 중")
+                Log.d(TAG, "PlayerActivity / EventListener > onIsPlayingChanged() / 재생 중")
 
                 for (i in 0..29) {
 
@@ -763,7 +806,7 @@ class PlayerActivity : AppCompatActivity() {
                     }
                 }
             } else {
-                Log.d(TAG, "PlayerActivity / PlaybackStateListener > onIsPlayingChanged() / 재생 중이 아님")
+                Log.d(TAG, "PlayerActivity / EventListener > onIsPlayingChanged() / 재생 중이 아님")
 
                 for (i in 0..29) {
 
@@ -794,7 +837,7 @@ class PlayerActivity : AppCompatActivity() {
     public override fun onPause() {
         super.onPause()
 
-        Log.d(TAG, "PlayerActivity > onPause() / player: $player")
+        Log.d(TAG, "PlayerActivity >> onPause() / player: $player")
         Log.d(TAG, " ")
 
 //        if (Util.SDK_INT <= 23) {
@@ -813,7 +856,7 @@ class PlayerActivity : AppCompatActivity() {
     public override fun onStop() {
         super.onStop()
 
-        Log.d(TAG, "PlayerActivity > onStop() / player: $player")
+        Log.d(TAG, "PlayerActivity >> onStop() / player: $player")
         Log.d(TAG, " ")
 
 //        if (Util.SDK_INT > 23) {
@@ -833,19 +876,18 @@ class PlayerActivity : AppCompatActivity() {
     // 사용자가 홈 버튼을 누르는 등 화면을 나가면 플레이어를 종료한다.
     private fun releasePlayer() {
 
-        Log.d(TAG, "PlayerActivity > releasePlayer() / player: $player")
-        Log.d(TAG, " ")
-
         if (player != null) {
 
             playWhenReady = player!!.playWhenReady
             currentWindow = player!!.currentWindowIndex
             playbackPosition = player!!.currentPosition
 
-            Log.d(TAG, "PlayerActivity > releasePlayer() / player!!.playWhenReady: ${player!!.playWhenReady}")
+            Log.d(TAG, "PlayerActivity > releasePlayer() / player: $player")
+            Log.d(TAG, "                                   player.playWhenReady: ${player!!.playWhenReady}")
             Log.d(TAG, "                                   playbackPosition: $playbackPosition")
-            Log.d(TAG, "                                   currentWindow:    $currentWindow")
-            Log.d(TAG, "                                   playWhenReady:    $playWhenReady")
+            Log.d(TAG, "                                   currentWindow: $currentWindow")
+            Log.d(TAG, "                                   playWhenReady: $playWhenReady")
+            Log.d(TAG, " ")
 
             player!!.removeListener(playerEventListener!!)
             player!!.release()
@@ -854,7 +896,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun saveData() {
-        Log.d(TAG, "PlayerActivity > saveComments()")
+        Log.d(TAG, "PlayerActivity >> onStop() / saveComments()")
 
         val token: TypeToken<Comment> = object : TypeToken<Comment>() {}
         val gson = GsonBuilder().create()
@@ -867,7 +909,7 @@ class PlayerActivity : AppCompatActivity() {
                 val key = newCommentList!![i].index
                 editor?.putString("$key", value)
 
-                Log.d(TAG, "                                  $key: $value")
+                Log.d(TAG, "                             $key: $value")
             }
             editor?.apply()
 
@@ -878,7 +920,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
 
-        Log.d(TAG, "PlayerActivity > onDestroy()")
+        Log.d(TAG, "PlayerActivity >> onDestroy()")
         Log.d(TAG, " ")
     }
 
@@ -953,7 +995,7 @@ class PlayerActivity : AppCompatActivity() {
             diff = -diff
         val marginLeft = VIEW_DEF_MARGIN_LEFT + (getAnimationSpeed() * diff)
 
-        Log.d(TAG, "PlayerActivity > getMarginLeft() / diff:       $currentPosition ± $position = $diff")
+        Log.d(TAG, "PlayerActivity > getMarginLeft() / diff: $currentPosition ± $position = $diff")
         Log.d(TAG, "                                   marginLeft: " +
                 "$VIEW_DEF_MARGIN_LEFT + (${getAnimationSpeed()} × $diff) = $marginLeft")
 

@@ -1,8 +1,13 @@
 <resources>
     <string name="app_name">구름티비</string>
+    <string name="player_activity_name"> </string>
+
     <string name="title_home">홈</string>
     <string name="title_user">마이 페이지</string>
-    <string name="player_activity_name"> </string>
+    <string name="title_activity_login">계정 등록</string>
+    <string name="title_activity_account_setting">계정 설정</string>
+    <string name="title_activity_my_video">내 동영상</string>
+    <string name="title_activity_upload_video">동영상 업로드</string>
 
     <string name="title_login">로그인</string>
     <string name="title_id">이메일</string>
@@ -13,10 +18,6 @@
     <string name="title_register">가입하기</string>
     <string name="login_fragment_label">로그인</string>
     <string name="register_fragment_label">계정 생성</string>
-    <string name="title_activity_my_video">내 동영상</string>
-    <string name="title_activity_upload_video">동영상 업로드</string>
-    <string name="title_activity_login">계정 등록</string>
-
     <string name="title_dashboard"> </string>
     <string name="title_notifications"> </string>
 
@@ -25,7 +26,6 @@
   (c) copyright 2008, Blender Foundation / www.bigbuckbunny.org -->
     <string name="media_url_mp4">https://storage.googleapis.com/exoplayer-test-media-0/BigBuckBunny_320x180.mp4</string>
     <string name="media_url_dash"><![CDATA[https://www.youtube.com/api/manifest/dash/id/bf5bb2419360daf1/source/youtube?as=fmp4_audio_clear,fmp4_sd_hd_clear&sparams=ip,ipbits,expire,source,id,as&ip=0.0.0.0&ipbits=0&expire=19000000000&signature=51AF5F39AB0CEC3E5497CD9C900EBFEAECCCB5C7.8506521BFC350652163895D4C26DEE124209AA9E&key=ik0]]></string>
-    <string name="title_activity_account_setting">AccountSettingActivity</string>
     <!-- Strings used for fragments for navigation -->
     <string name="first_fragment_label"> </string>
     <string name="second_fragment_label"> </string>

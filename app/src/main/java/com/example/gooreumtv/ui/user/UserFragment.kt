@@ -2,33 +2,20 @@ package com.example.gooreumtv.ui.user
 
 import android.app.Activity
 import android.content.Intent
-import android.content.SharedPreferences
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
-import androidx.activity.result.ActivityResult
-import androidx.activity.result.ActivityResultCallback
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityOptionsCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.example.gooreumtv.*
 import com.example.gooreumtv.MainActivity.Companion.TAG
 import com.example.gooreumtv.databinding.FragmentUserBinding
-import com.example.gooreumtv.ui.register.RegisterFragment
-import com.google.common.reflect.TypeToken
 import com.google.firebase.firestore.ktx.toObject
-import com.google.gson.GsonBuilder
 
 class UserFragment : Fragment() {
 
@@ -67,7 +54,7 @@ class UserFragment : Fragment() {
     private fun checkLoginState() {
         val uid = CurrentUser.getUid(requireActivity())
 
-        Log.d(TAG, "UserFragment > ▶ 로그인 체크 / uid: $uid")
+        Log.d(TAG, "UserFragment >> Check Login / uid: $uid")
 
         // 로그인 되어 있음
         if (uid != null) {
@@ -81,44 +68,41 @@ class UserFragment : Fragment() {
                 showProgressBar(true)
 
                 // 사용자 정보 로드
-                MyFirebase.getUsers()
-                    .document(uid)
-                    .get()
+                MyFirebase.getMyData(uid)
                     .addOnSuccessListener { document ->
-                        Log.d(TAG, "               사용자 정보 로드 성공..")
+                        Log.d(TAG, "                사용자 정보 로드 성공..")
 
-                        val user: User? = document.toObject()
-                        if (user != null) {
+                        val data = document.toObject<UserData>()
+                        if (data != null) {
 
-                            val name  = user.name
-                            val email = user.email
+                            val name  = data.name
+                            val email = data.email
 
-                            Log.d(TAG, "               name:  $name")
-                            Log.d(TAG, "               email: $email")
-                            Log.d(TAG, "               image: ${user.image}")
+                            Log.d(TAG, "                              name:  $name")
+                            Log.d(TAG, "                              email: $email")
+                            Log.d(TAG, "                              image: ${data.image}")
 
                             // 프로필 사진 다운로드
-                            MyFirebase.downloadUserImage(user.image)
+                            MyFirebase.downloadFileWithPath(data.image)
                                 ?.addOnSuccessListener {
                                     if (it != null) {
-                                        Log.d(TAG, "               로그인 성공!")
+                                        Log.d(TAG, "                프로필 사진 다운로드 성공..로그인 성공!")
 
-                                        val bitmap = Toolbox.byteArrayToBitmap(it)
-                                        if (bitmap != null) {
-                                            MainActivity.USER_IMAGE = bitmap
-                                            MainActivity.USER_EMAIL = email
-                                            MainActivity.USER_NAME  = name
+                                        // 앱을 실행중인 동안에는 매번 사용자 화면으로 돌아와도 서버에서
+                                        // 받아오지 않고 변수에 저장해놓고 쓴다.
+                                        MainActivity.USER_IMAGE = it
+                                        MainActivity.USER_EMAIL = email
+                                        MainActivity.USER_NAME  = name
 
-                                            updateUI(name, bitmap)
-                                        }
-                                        Log.d(TAG, "               bytes:  $it")
-                                        Log.d(TAG, "               bitmap: $bitmap")
+                                        updateUI(name, it)
+
+                                        Log.d(TAG, "                              bytes:  $it")
                                         Log.d(TAG, " ")
                                     }
                                 }?.addOnFailureListener { e ->
-                                    showErrorMessage("이미지 다운로드 실패 $e")
-                                    showErrorMessage("이미지 다운로드 실패 ${e.cause}")
-                                    showErrorMessage("이미지 다운로드 실패 ${e.message}")
+                                    showErrorMessage("                이미지 다운로드 실패 $e")
+                                    Log.e(TAG, "                이미지 다운로드 실패 ${e.cause}")
+                                    Log.e(TAG, "                이미지 다운로드 실패 ${e.message}")
                                 }
                         }
                     }.addOnFailureListener { e ->
@@ -132,7 +116,7 @@ class UserFragment : Fragment() {
         }
     }
 
-    private fun updateUI(name: String?, image: Bitmap) {
+    private fun updateUI(name: String?, image: ByteArray) {
         binding.nameView.text = name
         Glide.with(this)
             .load(image)
@@ -143,12 +127,30 @@ class UserFragment : Fragment() {
         binding.membershipInterface.visibility = View.VISIBLE
     }
 
+
+
+
+
+
+
+
+
+
     private fun goToMyVideo() {
         binding.myVideoButton.setOnClickListener {
             val intent = Intent(activity, MyVideoActivity::class.java)
             startActivity(intent)
         }
     }
+
+
+
+
+
+
+
+
+
 
     private fun goToLogin() {
         binding.goToLoginButton.setOnClickListener {
@@ -190,6 +192,15 @@ class UserFragment : Fragment() {
             }
         }
     }
+
+
+
+
+
+
+
+
+
 
     private fun goToAccountSetting() {
         binding.accountSettingButton.setOnClickListener {
